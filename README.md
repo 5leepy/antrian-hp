@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EV Charging Queue Management
 
-## Getting Started
+Aplikasi web modern berbasis *mobile* untuk manajemen antrian pengisian daya taksi listrik (EV). Dibangun menggunakan **Next.js 16**, **React 19**, **Tailwind CSS 4**, dan **Lucide Icons**.
 
-First, run the development server:
+## ✨ Fitur Utama
 
+- 🚗 **Manajemen Antrian Fleksibel**: Tambahkan armada (*fleet number*) ke antrian, masukkan ke stasiun *charging* (maks. 2 nozzle), dan operasikan status (*Selesai* atau *Batal*) sehalus aplikasi native.
+- ⏭️ **Lewati (Skip) Rank**: Taksi dapat di-skip / bertukar antrian ke bawah hanya lewat satu tombol.
+- 📱 **Swipe-to-Confirm**: Modul pergeseran tombol kustom layaknya fitur "Slide to Unlock" untuk menyelesaikan antrian dan mencegah aksi tak disengaja.
+- 💱 **Shift Handover via QR Code**: Fitur tanpa-server yang menjejali seluruh antrian aktif melalui *QR Code* ke layar HP operator selanjutnya dalam hitungan detik. 
+- 🌓 **Sistem Mode Terang & Gelap**: Kompatibilitas tema (*Light Mode*) bagi teknisi jika layar *smartphone* kurang terlihat di lingkungan pengisian _outdoor_.
+- ⏱️ **Kalkulasi ETA**: Secara langsung memberikan estimasi durasi *charging* rata-rata berdasarkan tempat antrian mobil.
+- 🔊 **Tone Notifikasi Suara**: Generator efek "Beep" sintesis langsung dari kode JS (Web Audio API) yang hemat memori tanpa file audio.
+- 🗄 **Penyimpanan Lokal Persisten**: Otomatis menyimpan riwayat dan antrian ke dalam perangkat itu sendiri dengan aman, mencegah hilangnya data akibat _reload_.
+
+## 🚀 Cara Menjalankan (Development)
+
+Sistem akan otomatis berjalan di semua alamat (*network host*) sehingga Anda dapat mengaksesnya lewat HP dan laptop Anda asalkan menggunakan paket Wi-Fi / jaringan yang persis sama.
+
+**1. Install Dependensi:**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**2. Jalankan Dev Server:**
+```bash
+npm run dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**3. Buka di Browser:**
+- Dari Laptop: Kunjungi [http://localhost:3000](http://localhost:3000)
+- Dari HP: Kunjungi `http://<IP_LAPTOP_ANDA>:3000` (contoh: `http://192.168.1.15:3000`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🌐 Publikasi Online / Deployment
 
-## Learn More
+Karena menggunakan **Next.js**, aplikasi antrian ini sudah disiapkan agar bisa langsung tayang menjadi web sungguhan secara gratis menggunakan platform **Vercel**. Anda hanya perlu menge-_push_ kode ke GitHub atau menggunakan *Vercel CLI*. 
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Repositori ini hanya menyimpan logika klien (tanpa interaksi *database* berat) sehingga eksekusi per halamannya akan bekerja dengan kilat di Vercel. 
