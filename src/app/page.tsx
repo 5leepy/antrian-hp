@@ -444,63 +444,7 @@ export default function EVQueueApp() {
 
   if (!isLoaded) return null;
 
-  // SETUP MODAL (Shown if maxNozzles is null, e.g., on first load or after reset)
-  if (isLoaded && maxNozzles === null) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center font-sans">
-        <div className="max-w-md w-full animate-in zoom-in-95 duration-500">
-          <div className="w-20 h-20 bg-teal-500 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-teal-500/40 mb-8">
-            <Zap className="w-10 h-10 text-white" />
-          </div>
-          <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-3">AntriCas</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed">Pilih konfigurasi stasiun / kapasitas Nozzle untuk memulai shift Anda hari ini.</p>
-          
-          <div className="flex flex-col gap-4">
-            <button onClick={() => setMaxNozzles(1)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
-              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
-                <span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">1</span>
-              </div>
-              <div className="text-left">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Stasiun Singel</h3>
-                <p className="text-sm text-slate-500">Hanya melayani 1 taksi sekaligus</p>
-              </div>
-            </button>
-            <button onClick={() => setMaxNozzles(2)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
-              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
-                <span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">2</span>
-              </div>
-              <div className="text-left">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Stasiun Standar</h3>
-                <p className="text-sm text-slate-500">Melayani 2 taksi (Dual Nozzle)</p>
-              </div>
-            </button>
-            <button onClick={() => setMaxNozzles(12)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
-              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
-                <span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">12</span>
-              </div>
-              <div className="text-left">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Pool Khusus</h3>
-                <p className="text-sm text-slate-500">Mampu melayani hingga 12 taksi</p>
-              </div>
-            </button>
-            <div className="my-2 flex items-center gap-4">
-               <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
-               <span className="text-xs font-bold text-slate-400">ATAU TERIMA DATA</span>
-               <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
-            </div>
-            <button 
-               onClick={() => { setQrMode("scan"); setShowQrModal(true); }}
-               className="w-full bg-slate-100 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 p-4 rounded-2xl flex items-center justify-center gap-3 transition-all text-slate-600 dark:text-slate-400 font-bold active:scale-95"
-            >
-               <Camera className="w-5 h-5 text-teal-500" />
-               Scan Kode QR Handoff
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // Global Modal Modifiers Moved downstream
   const chargingCars = queue.filter(q => q.status === "charging").sort((a,b) => (a.chargingTime || 0) - (b.chargingTime || 0));
   const waitingCars = queue.filter(q => q.status === "waiting").sort((a, b) => a.enqueueTime - b.enqueueTime);
   const isNozzleFull = chargingCars.length >= (maxNozzles || 2); // Default to 2 if maxNozzles is null (shouldn't happen after setup)
@@ -518,6 +462,40 @@ export default function EVQueueApp() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans transition-colors duration-300">
+      
+      {maxNozzles === null ? (
+        <div className="flex flex-col items-center justify-center p-6 text-center flex-1 w-full max-w-md mx-auto animate-in zoom-in-95 duration-500">
+          <div className="w-20 h-20 bg-teal-500 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-teal-500/40 mb-8">
+            <Zap className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-3">AntriCas</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed">Pilih konfigurasi stasiun / kapasitas Nozzle untuk memulai shift Anda hari ini.</p>
+          
+          <div className="flex flex-col gap-4 w-full">
+            <button onClick={() => setMaxNozzles(1)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
+              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors"><span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">1</span></div>
+              <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Stasiun Singel</h3><p className="text-sm text-slate-500">Hanya melayani 1 taksi sekaligus</p></div>
+            </button>
+            <button onClick={() => setMaxNozzles(2)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
+              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors"><span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">2</span></div>
+              <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Stasiun Standar</h3><p className="text-sm text-slate-500">Melayani 2 taksi (Dual Nozzle)</p></div>
+            </button>
+            <button onClick={() => setMaxNozzles(12)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
+              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors"><span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">12</span></div>
+              <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Pool Khusus</h3><p className="text-sm text-slate-500">Mampu melayani hingga 12 taksi</p></div>
+            </button>
+            <div className="my-2 flex items-center gap-4">
+               <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
+               <span className="text-xs font-bold text-slate-400">ATAU TERIMA DATA</span>
+               <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
+            </div>
+            <button onClick={() => { setQrMode("scan"); setShowQrModal(true); }} className="w-full bg-slate-100 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 p-4 rounded-2xl flex items-center justify-center gap-3 transition-all text-slate-600 dark:text-slate-400 font-bold active:scale-95">
+               <Camera className="w-5 h-5 text-teal-500" /> Scan Kode QR Handoff
+            </button>
+          </div>
+        </div>
+      ) : (
+      <>
       <header className="sticky top-0 z-40 flex border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md justify-between items-center p-4">
         <h1 className="text-xl font-black bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent flex items-center gap-2">
           <CarFront className="w-6 h-6 text-teal-500" />
@@ -872,6 +850,8 @@ export default function EVQueueApp() {
           Developed by <span className="text-teal-500 font-bold">Nadir Nahdi</span>
         </p>
       </footer>
+      </>
+      )}
 
       {/* TOAST NOTIFICATION */}
       {toast && (
@@ -931,12 +911,14 @@ export default function EVQueueApp() {
            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 flex flex-col items-center">
              
              {/* TOGGLE TABS */}
-             <div className="flex w-full bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl mb-6">
-                <button onClick={() => setQrMode("show")} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${qrMode === 'show' ? 'bg-white dark:bg-slate-900 shadow-sm text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}>Tampilkan QR</button>
-                <button onClick={() => setQrMode("scan")} className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-bold rounded-lg transition-all ${qrMode === 'scan' ? 'bg-white dark:bg-slate-900 shadow-sm text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}><Camera className="w-5 h-5"/> Scan Kamera</button>
-             </div>
+             {maxNozzles !== null && (
+               <div className="flex w-full bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl mb-6">
+                  <button onClick={() => setQrMode("show")} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${qrMode === 'show' ? 'bg-white dark:bg-slate-900 shadow-sm text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}>Tampilkan QR</button>
+                  <button onClick={() => setQrMode("scan")} className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-bold rounded-lg transition-all ${qrMode === 'scan' ? 'bg-white dark:bg-slate-900 shadow-sm text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}><Camera className="w-5 h-5"/> Scan Kamera</button>
+               </div>
+             )}
 
-             {qrMode === "show" ? (
+             {qrMode === "show" && maxNozzles !== null ? (
                <>
                  <h3 className="text-xl font-black text-slate-800 dark:text-teal-400 mb-2">Transfer Antrian</h3>
                  <p className="text-slate-500 text-center text-sm mb-6">Minta operator pengganti untuk men-scan QR ini menggunakan kamera HP mereka.</p>
