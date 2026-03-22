@@ -88,7 +88,7 @@ export default function EVQueueApp() {
   const [history, setHistory] = useState<QueueItem[]>([]);
   const [maxNozzles, setMaxNozzles] = useState<number | null>(null);
   const [fleetInput, setFleetInput] = useState("");
-  const [activeTab, setActiveTab] = useState<"queue" | "history">("queue");
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -483,6 +483,9 @@ export default function EVQueueApp() {
           Green SM Charging
         </h1>
         <div className="flex items-center gap-1.5 sm:gap-2">
+          <button onClick={() => setShowHistoryModal(true)} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors" aria-label="Riwayat Hari Ini">
+            <History className="w-5 h-5 flex-shrink-0" />
+          </button>
           <button onClick={handleResetData} className="p-2 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors" aria-label="Reset Data">
             <Trash2 className="w-5 h-5 flex-shrink-0" />
           </button>
@@ -500,35 +503,8 @@ export default function EVQueueApp() {
       </header>
 
       <main className="flex-1 w-full max-w-md mx-auto p-4 flex flex-col gap-6 pb-24">
-        {/* TABS */}
-        <div className="flex bg-slate-200 dark:bg-slate-900 rounded-xl p-1 gap-1 border border-slate-300 dark:border-slate-800 shadow-inner">
-          <button
-            onClick={() => setActiveTab("queue")}
-            className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all duration-200 ${
-              activeTab === "queue"
-                ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-sm border border-slate-200 dark:border-slate-700"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-            }`}
-          >
-            <List className="w-4 h-4" />
-            Antrian ({queue.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("history")}
-            className={`flex-1 py-3 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all duration-200 ${
-              activeTab === "history"
-                ? "bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-sm border border-slate-200 dark:border-slate-700"
-                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-            }`}
-          >
-            <History className="w-4 h-4" />
-            Riwayat
-          </button>
-        </div>
-
-        {/* TAB: QUEUE */}
-        {activeTab === "queue" && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex flex-col gap-5">
+        {/* QUEUE MAIN CONTENT */}
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex flex-col gap-5">
             {/* COMPACT ADD FORM */}
             <form onSubmit={handleAdd} className="flex items-center gap-3 relative bg-white dark:bg-slate-900 p-2 pl-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm focus-within:ring-2 focus-within:ring-teal-500/50 transition-all">
               <div className="flex-1 flex items-center gap-3">
@@ -750,12 +726,25 @@ export default function EVQueueApp() {
               </div>
             )}
           </div>
-        )}
 
-        {/* TAB: HISTORY */}
-        {activeTab === "history" && (
-          <div className="animate-in fade-in slide-in-from-right-2 duration-300 flex flex-col gap-6">
-            <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl p-5 flex items-center justify-between shadow-lg text-white">
+        {/* HISTORY MODAL */}
+        {showHistoryModal && (
+          <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-slate-950 flex flex-col animate-in slide-in-from-bottom-full duration-300 sm:duration-500">
+            <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between shadow-sm sticky top-0 z-10 w-full max-w-md mx-auto">
+              <h2 className="text-xl font-black text-slate-800 dark:text-teal-400 flex items-center gap-2">
+                <History className="w-6 h-6 text-teal-500" /> Riwayat Hari Ini
+              </h2>
+              <button 
+                onClick={() => setShowHistoryModal(false)} 
+                className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-rose-500 transition-colors"
+                aria-label="Tutup Riwayat"
+              >
+                <X className="w-5 h-5 flex-shrink-0" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6 pb-24 w-full max-w-md mx-auto bg-slate-50 dark:bg-slate-950">
+              <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl p-5 flex items-center justify-between shadow-lg text-white shrink-0">
               <div>
                 <p className="text-teal-100 text-sm font-bold mb-1 drop-shadow-sm">Total Selesai Hari Ini</p>
                 <p className="text-4xl font-black drop-shadow-md">{completedTodayCount} <span className="text-lg font-bold">Mobil</span></p>
@@ -819,6 +808,7 @@ export default function EVQueueApp() {
               )}
             </div>
           </div>
+        </div>
         )}
 
       </main>
