@@ -13,6 +13,7 @@ type QueueItem = {
   status: "waiting" | "charging" | "completed" | "cancelled";
   completedTime?: number;
   chargingTime?: number;
+  assignedNozzle?: number;
 };
 
 type ToastType = {
@@ -21,27 +22,28 @@ type ToastType = {
   type: "success" | "error" | "info";
 };
 
-const MAX_NOZZLES = 2;
 const AVG_CHARGING_TIME_MINS = 30; // 30 minutes average
 
-function SwipeButton({ onConfirm, successText = "Selesai" }: { onConfirm: () => void, successText?: string }) {
+// Make SwipeButton accept compact prop
+export function SwipeButton({ onComplete, compact = false }: { onComplete: () => void; compact?: boolean }) {
   const [slide, setSlide] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const trackRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
+  const maxSlide = containerRef.current ? containerRef.current.offsetWidth - 56 : 200;
+
   const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!isSwiping || isSuccess || !trackRef.current) return;
+    if (!isSwiping || isSuccess || !containerRef.current) return;
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
-    const trackRect = trackRef.current.getBoundingClientRect();
-    const maxSlide = trackRect.width - 56;
+    const trackRect = containerRef.current.getBoundingClientRect();
     const newSlide = Math.max(0, Math.min(clientX - trackRect.left - 24, maxSlide));
     setSlide(newSlide);
     
     if (newSlide >= maxSlide * 0.85) {
       setIsSuccess(true);
       setSlide(maxSlide);
-      onConfirm();
+      onComplete();
     }
   };
   
@@ -52,7 +54,7 @@ function SwipeButton({ onConfirm, successText = "Selesai" }: { onConfirm: () => 
   
   return (
     <div 
-      ref={trackRef}
+      ref={containerRef}
       className={`relative h-14 rounded-xl flex items-center justify-center overflow-hidden transition-colors flex-1 w-full select-none ${
         isSuccess ? 'bg-teal-500 text-white' : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
       }`}
@@ -72,19 +74,21 @@ function SwipeButton({ onConfirm, successText = "Selesai" }: { onConfirm: () => 
       >
         {isSuccess ? <Check className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
       </div>
-      <span className={`font-bold text-sm text-slate-500 dark:text-slate-400 pl-8 pointer-events-none transition-opacity duration-200 ${isSuccess || slide > 30 ? 'opacity-0' : 'opacity-100'}`}>
-        Geser untuk Selesai
+      <span className={`font-bold ${compact ? 'text-xs pl-8' : 'text-sm pl-8'} text-slate-500 dark:text-slate-400 pointer-events-none transition-opacity duration-200 ${isSuccess || slide > 30 ? 'opacity-0' : 'opacity-100'}`}>
+        {compact ? 'Geser Selesai' : 'Geser untuk Selesai'}
       </span>
       {isSuccess && <span className="font-bold text-sm text-white pointer-events-none absolute w-full text-center pl-8 fade-in animate-in">Selesai!</span>}
     </div>
   );
 }
 
-export default function Home() {
-  const [activeTab, setActiveTab] = useState<"queue" | "history">("queue");
-  const [fleetInput, setFleetInput] = useState("");
+export default function EVQueueApp() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [history, setHistory] = useState<QueueItem[]>([]);
+  const [maxNozzles, setMaxNozzles] = useState<number | null>(null);
+  const [fleetInput, setFleetInput] = useState("");
+  const [activeTab, setActiveTab] = useState<"queue" | "history">("queue");
+  const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -118,6 +122,7 @@ export default function Home() {
     const savedQueue = localStorage.getItem("ev_queue");
     const savedHistory = localStorage.getItem("ev_history");
     const savedTheme = localStorage.getItem("ev_theme");
+    const savedNozzles = localStorage.getItem("ev_max_nozzles");
 
     if (savedQueue) setQueue(JSON.parse(savedQueue));
     if (savedHistory) setHistory(JSON.parse(savedHistory));
@@ -133,6 +138,9 @@ export default function Home() {
       // Default to dark
       document.documentElement.classList.add("dark");
     }
+    if (savedNozzles) {
+      setMaxNozzles(parseInt(savedNozzles, 10));
+    }
 
     setIsLoaded(true);
   }, []);
@@ -143,8 +151,9 @@ export default function Home() {
       localStorage.setItem("ev_queue", JSON.stringify(queue));
       localStorage.setItem("ev_history", JSON.stringify(history));
       localStorage.setItem("ev_theme", theme);
+      if (maxNozzles) localStorage.setItem("ev_max_nozzles", maxNozzles.toString());
     }
-  }, [queue, history, theme, isLoaded]);
+  }, [queue, history, theme, maxNozzles, isLoaded]);
 
   // Handle incoming transfer URL
   useEffect(() => {
@@ -237,8 +246,10 @@ export default function Home() {
       onConfirm: () => {
         setQueue([]);
         setHistory([]);
+        setMaxNozzles(null); // This will trigger the Setup Modal
         localStorage.removeItem("ev_queue");
         localStorage.removeItem("ev_history");
+        localStorage.removeItem("ev_max_nozzles");
         setConfirmDialog(null);
         showToast("Seluruh data antrian & riwayat telah di-reset", "info");
       }
@@ -253,11 +264,15 @@ export default function Home() {
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    const inputClean = fleetInput.trim().toUpperCase();
-    if (!inputClean) return;
+    const inputRaw = fleetInput.trim();
+    if (!inputRaw) return;
+    
+    // Otomatis pad dengan 0 di depan agar selalu 3 digit
+    const inputClean = inputRaw.padStart(3, '0');
 
-    const isDuplicate = queue.some(q => q.fleetNumber === inputClean);
-    if (isDuplicate) {
+    // Cek apakah sudah ada di queue aktif
+    const isExist = queue.some(q => q.fleetNumber === inputClean);
+    if (isExist) {
       showToast(`Taksi ${inputClean} sudah ada di antrian atau sedang charging!`, "error");
       return;
     }
@@ -341,7 +356,11 @@ export default function Home() {
       setEditingItem(null);
       return;
     }
-    const cleanFleet = editingItem.fleetNumber.trim().toUpperCase();
+    const cleanFleet = editingItem.fleetNumber.replace(/\D/g, '').slice(0, 3).padStart(3, '0');
+    if (cleanFleet === '000') {
+      setEditingItem(null);
+      return;
+    }
     
     const isDuplicate = queue.some(q => q.id !== id && q.fleetNumber === cleanFleet);
     if (isDuplicate) {
@@ -376,9 +395,54 @@ export default function Home() {
 
   if (!isLoaded) return null;
 
+  // SETUP MODAL (Shown if maxNozzles is null, e.g., on first load or after reset)
+  if (isLoaded && maxNozzles === null) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="max-w-md w-full animate-in zoom-in-95 duration-500">
+          <div className="w-20 h-20 bg-teal-500 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-teal-500/40 mb-8">
+            <Zap className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-3">Green SM Charging</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed">Pilih konfigurasi stasiun / kapasitas Nozzle untuk memulai shift Anda hari ini.</p>
+          
+          <div className="flex flex-col gap-4">
+            <button onClick={() => setMaxNozzles(1)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
+              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
+                <span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">1</span>
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Stasiun Singel</h3>
+                <p className="text-sm text-slate-500">Hanya melayani 1 taksi sekaligus</p>
+              </div>
+            </button>
+            <button onClick={() => setMaxNozzles(2)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
+              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
+                <span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">2</span>
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Stasiun Standar</h3>
+                <p className="text-sm text-slate-500">Melayani 2 taksi (Dual Nozzle)</p>
+              </div>
+            </button>
+            <button onClick={() => setMaxNozzles(12)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
+              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors">
+                <span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">12</span>
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Pool Khusus</h3>
+                <p className="text-sm text-slate-500">Mampu melayani hingga 12 taksi</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const chargingCars = queue.filter(q => q.status === "charging").sort((a,b) => (a.chargingTime || 0) - (b.chargingTime || 0));
   const waitingCars = queue.filter(q => q.status === "waiting").sort((a, b) => a.enqueueTime - b.enqueueTime);
-  const isNozzleFull = chargingCars.length >= MAX_NOZZLES;
+  const isNozzleFull = chargingCars.length >= (maxNozzles || 2); // Default to 2 if maxNozzles is null (shouldn't happen after setup)
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -445,99 +509,83 @@ export default function Home() {
         {/* TAB: QUEUE */}
         {activeTab === "queue" && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex flex-col gap-5">
-            <form onSubmit={handleAdd} className="flex flex-col gap-4 relative bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <div className="relative w-full flex items-center">
+            {/* COMPACT ADD FORM */}
+            <form onSubmit={handleAdd} className="flex items-center gap-3 relative bg-white dark:bg-slate-900 p-2 pl-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm focus-within:ring-2 focus-within:ring-teal-500/50 transition-all">
+              <div className="flex-1 flex items-center gap-3">
+                <CarFront className="w-5 h-5 text-teal-500 shrink-0" />
                 <input
-                  id="fleet"
                   type="text"
                   value={fleetInput}
                   onChange={handleFleetInputChange}
-                  placeholder="000"
+                  placeholder="Ketik No. Lambung..."
                   maxLength={3}
                   pattern="[0-9]*"
-                  className="w-full bg-slate-100 dark:bg-slate-950 border-2 border-transparent focus:border-teal-500/50 rounded-2xl py-5 px-6 pr-20 text-5xl font-black text-center tracking-[0.2em] placeholder:text-slate-300 dark:placeholder:text-slate-800 focus:outline-none focus:ring-4 focus:ring-teal-500/20 transition-all shadow-inner text-slate-800 dark:text-slate-100"
+                  className="w-full bg-transparent border-none py-3 text-2xl font-black text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-700 focus:outline-none focus:ring-0 tracking-widest uppercase"
                   autoComplete="off"
                   inputMode="numeric"
                 />
-                <button
-                  type="submit"
-                  disabled={!fleetInput.trim()}
-                  className="absolute right-3 w-14 h-14 bg-gradient-to-br from-teal-400 to-emerald-500 hover:from-teal-300 hover:to-emerald-400 disabled:from-slate-200 disabled:to-slate-200 disabled:dark:from-slate-800 disabled:dark:to-slate-800 disabled:text-slate-400 disabled:dark:text-slate-600 text-white rounded-xl shadow-lg shadow-teal-500/30 disabled:shadow-none flex items-center justify-center transition-all active:scale-[0.95]"
-                  aria-label="Masuk Antrian"
-                >
-                  <ChevronRight className="w-8 h-8" />
-                </button>
               </div>
-              <p className="text-center text-xs font-semibold text-slate-400 dark:text-slate-500">
-                Masukkan maks. 3 digit nomor lambung taksi
-              </p>
+              <button
+                type="submit"
+                disabled={!fleetInput.trim()}
+                className="w-14 h-14 bg-gradient-to-br from-teal-400 to-emerald-500 hover:from-teal-300 hover:to-emerald-400 disabled:from-slate-200 disabled:to-slate-200 disabled:dark:from-slate-800 disabled:dark:to-slate-800 disabled:text-slate-400 disabled:dark:text-slate-600 text-white rounded-2xl shadow-md disabled:shadow-none flex items-center justify-center transition-all shrink-0 active:scale-95"
+                aria-label="Masuk Antrian"
+              >
+                <ChevronRight className="w-8 h-8" />
+              </button>
             </form>
 
             <div className="w-full h-px bg-slate-200 dark:bg-slate-800/50 my-1"></div>
 
-            {/* CHARGING */}
-            <div className="flex flex-col gap-3">
+            {/* MASTER CALL BUTTON */}
+            {waitingCars.length > 0 && (
+              <button 
+                onClick={() => setShowDispatchModal(true)}
+                className="w-full mt-2 py-5 rounded-3xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-black text-xl shadow-lg shadow-teal-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 relative overflow-hidden group border-b-4 border-emerald-600/50"
+              >
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                <Zap className="w-7 h-7 fill-white drop-shadow-md" />
+                PANGGIL BERIKUTNYA
+              </button>
+            )}
+
+            {/* DASHBOARD CHARGER */}
+            <div className="flex flex-col gap-3 mt-3">
               <div className="flex justify-between items-center mb-1">
                 <h2 className="text-lg font-bold text-teal-600 dark:text-teal-400 flex items-center gap-2">
-                  <Zap className="w-5 h-5" />
-                  Sedang Charging
+                  <BatteryCharging className="w-5 h-5" />
+                  Dashboard Nozzle
                 </h2>
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${isNozzleFull ? 'bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20' : 'bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300 border-teal-200 dark:border-teal-500/20'}`}>
-                  {chargingCars.length} / {MAX_NOZZLES} Nozzle
+                  {chargingCars.length} / {maxNozzles} Terisi
                 </span>
               </div>
 
-              {chargingCars.length === 0 ? (
-                <div className="bg-slate-100 dark:bg-slate-900/30 border border-slate-300 dark:border-slate-800/50 border-dashed rounded-2xl p-6 text-center">
-                  <p className="text-slate-500">Tidak ada taksi yang sedang charging.</p>
-                </div>
-              ) : (
-                <ul className="flex flex-col gap-3">
-                  {chargingCars.map((item) => (
-                    <li key={item.id} className="bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-500/30 rounded-2xl p-4 flex flex-col gap-4 shadow-sm relative overflow-hidden group">
-                      <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-teal-400 to-emerald-500 animate-pulse"></div>
-                      
-                      <div className="flex justify-between items-start pl-2">
-                        <div>
-                          <p className="text-xs font-bold bg-teal-50 dark:bg-teal-500/10 inline-flex px-2 py-0.5 rounded text-teal-600 dark:text-teal-300 border border-teal-200 dark:border-teal-500/20 mb-1 items-center gap-1">
-                            <BatteryCharging className="w-3 h-3" /> Charging
-                          </p>
-                          {editingItem?.id === item.id ? (
-                            <input 
-                              type="text" 
-                              autoFocus
-                              value={editingItem.fleetNumber}
-                              onChange={(e) => setEditingItem({ ...editingItem, fleetNumber: e.target.value })}
-                              onBlur={() => saveEdit(item.id)}
-                              onKeyDown={(e) => e.key === 'Enter' && saveEdit(item.id)}
-                              className="text-3xl font-black w-24 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-teal-400 rounded outline-none px-1 uppercase"
-                            />
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-3xl font-black tracking-tight text-slate-800 dark:text-white">{item.fleetNumber}</h3>
-                              <button onClick={() => setEditingItem({ id: item.id, fleetNumber: item.fleetNumber })} className="text-slate-400 opacity-70 hover:opacity-100 hover:text-teal-500 transition-opacity p-1">
-                                <Edit2 className="w-5 h-5" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right flex flex-col items-end">
-                           <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-                             Mulai: {format(item.chargingTime || item.enqueueTime, "HH:mm")}
-                           </span>
-                           <span className="text-xs text-teal-600 dark:text-teal-400/80 font-bold mt-0.5">
-                             {Math.floor((currentTime - (item.chargingTime || item.enqueueTime)) / 60000)} mnt berjalan
-                           </span>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2.5 mt-1">
-                        <SwipeButton onConfirm={() => executeAction(item, "completed")} />
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div className={`grid gap-3 ${maxNozzles === 12 ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2'}`}>
+                {Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
+                  const car = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
+                  return (
+                    <div 
+                      key={n} 
+                      onClick={() => { if(car && window.confirm(`Selesaikan taksi ${car.fleetNumber}?`)) executeAction(car, "completed")}}
+                      className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-sm cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95' : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 border-dashed opacity-80'}`}
+                    >
+                      <span className="absolute top-1.5 left-2 text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500">N-{n}</span>
+                      {car ? (
+                        <>
+                          <div className="absolute top-0 right-0 w-8 h-8 bg-teal-100 dark:bg-teal-500/20 rounded-bl-full flex items-start justify-end pr-1 pt-1 opacity-50"></div>
+                          <span className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mt-3 mb-1">{car.fleetNumber}</span>
+                          <span className="text-[10px] sm:text-xs text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {Math.floor((currentTime - (car.chargingTime || car.enqueueTime)) / 60000)}m
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-2">KOSONG</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* WAITING */}
@@ -561,8 +609,8 @@ export default function Home() {
               ) : (
                 <ul className="flex flex-col gap-3">
                   {waitingCars.map((item, index) => {
-                    const positionInBatch = Math.floor(index / MAX_NOZZLES);
-                    const isNextBatch = index < MAX_NOZZLES;
+                    const positionInBatch = Math.floor(index / (maxNozzles || 2));
+                    const isNextBatch = index < (maxNozzles || 2);
                     
                     // Simple ETA (Very rough estimation: 30 mins per batch)
                     let etaText = "Segera";
@@ -614,15 +662,12 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2.5 mt-1">
-                        <button onClick={() => handleAction(item, "charging")} disabled={isNozzleFull} className="flex-1 bg-sky-50 dark:bg-sky-500/10 hover:bg-sky-100 dark:hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20 disabled:opacity-50 disabled:bg-slate-100 disabled:dark:bg-slate-900 disabled:text-slate-400 disabled:border-slate-200 disabled:dark:border-slate-800 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-sm">
-                          <Zap className="w-5 h-5" /> {isNozzleFull ? 'Penuh' : 'Panggil'}
+                      <div className="flex gap-2.5 mt-2">
+                        <button onClick={() => handleSkip(item, index)} disabled={index >= waitingCars.length - 1} className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:active:scale-100 py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-sm">
+                          <SkipForward className="w-5 h-5" /> Lewati
                         </button>
-                        <button onClick={() => handleSkip(item, index)} disabled={index >= waitingCars.length - 1} className="w-[52px] h-[52px] shrink-0 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:active:scale-100 rounded-xl flex items-center justify-center active:scale-[0.98] transition-all shadow-sm" aria-label="Lewati ke bawah">
-                          <SkipForward className="w-5 h-5" />
-                        </button>
-                        <button onClick={() => handleAction(item, "cancelled")} className="w-[52px] h-[52px] shrink-0 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-500 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-xl flex items-center justify-center active:scale-[0.98] transition-all shadow-sm" aria-label="Batal">
-                          <X className="w-5 h-5" />
+                        <button onClick={() => executeAction(item, "cancelled")} className="flex-1 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-sm">
+                          <X className="w-5 h-5" /> Batal
                         </button>
                       </div>
                     </li>
@@ -630,6 +675,60 @@ export default function Home() {
                 </ul>
               )}
             </div>
+
+            {/* DISPATCH MODAL */}
+            {showDispatchModal && waitingCars[0] && (
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in slide-in-from-bottom-10">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-xl font-black text-slate-800 dark:text-white">Pilih Nozzle Target</h3>
+                      <button onClick={() => setShowDispatchModal(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    
+                    <div className="mb-6 bg-teal-50 dark:bg-teal-500/10 p-4 rounded-2xl border border-teal-100 dark:border-teal-500/20 flex items-center gap-4">
+                      <div className="w-14 h-14 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center font-black text-2xl text-teal-600 dark:text-teal-400 shadow-sm border border-teal-100 dark:border-teal-500/20">{waitingCars[0].fleetNumber}</div>
+                      <div>
+                        <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-0.5">Antrian #1 Masuk</p>
+                        <p className="text-slate-600 dark:text-slate-300 text-sm font-medium leading-tight">Pilih kotak nozzle di bawah untuk mengalihkan taksi ini.</p>
+                      </div>
+                    </div>
+
+                    <div className={`grid gap-3 ${maxNozzles === 12 ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2'}`}>
+                      {Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
+                        const occupied = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
+                        return (
+                          <button 
+                            key={n} 
+                            onClick={() => {
+                              // Execute Dispatch inside the component context using executeAction logic
+                              const nextCar = waitingCars[0];
+                              if (occupied) {
+                                executeAction(occupied, "completed");
+                              }
+                              // Then move nextCar to charging
+                              setQueue(prev => prev.map(q => q.id === nextCar.id ? { ...q, status: "charging", chargingTime: Date.now(), assignedNozzle: n } : q));
+                              setShowDispatchModal(false);
+                            }}
+                            className={`p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all active:scale-95 ${occupied ? 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-500/50'}`}
+                          >
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Nz {n}</span>
+                            {occupied ? (
+                              <>
+                                <span className="font-black text-xl text-slate-800 dark:text-white">{occupied.fleetNumber}</span>
+                                <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded mt-1 font-bold tracking-widest shadow-sm">GANTI</span>
+                              </>
+                            ) : (
+                              <span className="font-bold text-teal-600 dark:text-teal-400 text-sm mt-3 mb-1">KOSONG</span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
