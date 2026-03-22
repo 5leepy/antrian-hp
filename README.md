@@ -1,38 +1,42 @@
-# EV Charging Queue Management
+# 🚕 AntriCas
 
-Aplikasi web modern berbasis *mobile* untuk manajemen antrian pengisian daya taksi listrik (EV). Dibangun menggunakan **Next.js 16**, **React 19**, **Tailwind CSS 4**, dan **Lucide Icons**.
+Aplikasi web modern berbasis *mobile-first* (PWA) untuk manajemen antrian pengisian daya taksi listrik (EV) di SPKLU. Dirancang khusus untuk efisiensi operator lapangan dengan antarmuka sehalus aplikasi *native*.
 
-## ✨ Fitur Utama
+## ✨ Fitur Unggulan
 
-- 🚗 **Manajemen Antrian Fleksibel**: Tambahkan armada (*fleet number*) ke antrian, masukkan ke stasiun *charging* (maks. 2 nozzle), dan operasikan status (*Selesai* atau *Batal*) sehalus aplikasi native.
-- ⏭️ **Lewati (Skip) Rank**: Taksi dapat di-skip / bertukar antrian ke bawah hanya lewat satu tombol.
-- 📱 **Swipe-to-Confirm**: Modul pergeseran tombol kustom layaknya fitur "Slide to Unlock" untuk menyelesaikan antrian dan mencegah aksi tak disengaja.
-- 💱 **Shift Handover via QR Code**: Fitur tanpa-server yang menjejali seluruh antrian aktif melalui *QR Code* ke layar HP operator selanjutnya dalam hitungan detik. 
-- 🌓 **Sistem Mode Terang & Gelap**: Kompatibilitas tema (*Light Mode*) bagi teknisi jika layar *smartphone* kurang terlihat di lingkungan pengisian _outdoor_.
-- ⏱️ **Kalkulasi ETA**: Secara langsung memberikan estimasi durasi *charging* rata-rata berdasarkan tempat antrian mobil.
-- 🔊 **Tone Notifikasi Suara**: Generator efek "Beep" sintesis langsung dari kode JS (Web Audio API) yang hemat memori tanpa file audio.
-- 🗄 **Penyimpanan Lokal Persisten**: Otomatis menyimpan riwayat dan antrian ke dalam perangkat itu sendiri dengan aman, mencegah hilangnya data akibat _reload_.
+- ⚡ **Smart Dispatch Dashboard**: Satu tombol utama untuk mengalihkan antrian ke stasiun pengisian secara otomatis.
+- 🏗️ **Konfigurasi Stasiun Fleksibel**: Mendukung pengaturan 1, 2, hingga 12 Nozzle sekaligus (Pool Besar).
+- 📲 **Seamless QR Handoff**: Pindahkan seluruh data antrian ke HP rekan operator pengganti hanya dalam hitungan detik tanpa server awan.
+- 🌓 **Hybrid Theme Control**: Deteksi otomatis tema gelap/terang perangkat dengan opsi kendali manual.
+- ⏩ **Manajemen Cerdas**: Fitur *Skip* urutan, *Edit* nomor lambung, dan tombol *Undo* untuk meminimalkan kesalahan input.
+- 🔊 **Notifikasi Audio**: Bunyi beep sintesis untuk memberikan sinyal konfirmasi saat taksi selesai dicas.
+- 🗄️ **Offline-First & Persisten**: Menggunakan *Local Storage* agar data tidak hilang saat browser ditutup atau sinyal internet buruk.
+
+## 🛠️ Tech Stack
+
+- **Framework**: Next.js 15+ (App Router)
+- **Library UI**: React 19
+- **Styling**: Tailwind CSS 4
+- **Icons**: Lucide Icons
+- **Compression**: LZ-String (untuk QR payload yang ringan)
 
 ## 🚀 Cara Menjalankan (Development)
 
-Sistem akan otomatis berjalan di semua alamat (*network host*) sehingga Anda dapat mengaksesnya lewat HP dan laptop Anda asalkan menggunakan paket Wi-Fi / jaringan yang persis sama.
+Aplikasi ini dirancang untuk dijalankan di jaringan lokal agar bisa diakses langsung via HP petugas:
 
-**1. Install Dependensi:**
-```bash
-npm install
-```
+1. **Install Dependensi:**
+   ```bash
+   npm install
+   ```
 
-**2. Jalankan Dev Server:**
-```bash
-npm run dev
-```
+2. **Jalankan Dev Server:**
+   ```bash
+   npm run dev
+   ```
 
-**3. Buka di Browser:**
-- Dari Laptop: Kunjungi [http://localhost:3000](http://localhost:3000)
-- Dari HP: Kunjungi `http://<IP_LAPTOP_ANDA>:3000` (contoh: `http://192.168.1.15:3000`)
+3. **Akses Aplikasi:**
+   - **PC/Laptop**: [http://localhost:3000](http://localhost:3000)
+   - **Smartphone**: Gunakan IP Laptop Anda (misal: `http://192.168.1.15:3000`)
 
-## 🌐 Publikasi Online / Deployment
-
-Karena menggunakan **Next.js**, aplikasi antrian ini sudah disiapkan agar bisa langsung tayang menjadi web sungguhan secara gratis menggunakan platform **Vercel**. Anda hanya perlu menge-_push_ kode ke GitHub atau menggunakan *Vercel CLI*. 
-
-Repositori ini hanya menyimpan logika klien (tanpa interaksi *database* berat) sehingga eksekusi per halamannya akan bekerja dengan kilat di Vercel. 
+---
+*Developed by **Nadir Nahdi** with ❤️ for efficiency.*

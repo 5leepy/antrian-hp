@@ -95,6 +95,8 @@ export default function EVQueueApp() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [toast, setToast] = useState<ToastType | null>(null);
   const [searchHistory, setSearchHistory] = useState("");
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showMainMenu, setShowMainMenu] = useState(false);
 
   // Edit State
   const [editingItem, setEditingItem] = useState<{ id: string; fleetNumber: string } | null>(null);
@@ -497,26 +499,59 @@ export default function EVQueueApp() {
       ) : (
       <>
       <header className="sticky top-0 z-40 flex border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md justify-between items-center p-4">
-        <h1 className="text-xl font-black bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent flex items-center gap-2">
-          <CarFront className="w-6 h-6 text-teal-500" />
-          AntriCas
-        </h1>
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <button onClick={() => setShowHistoryModal(true)} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors" aria-label="Riwayat Hari Ini">
-            <History className="w-5 h-5 flex-shrink-0" />
+        <div className="relative">
+          <button 
+            onClick={() => setShowMainMenu(!showMainMenu)}
+            className="text-xl font-black bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent flex items-center gap-2 active:scale-95 transition-transform"
+          >
+            <CarFront className="w-6 h-6 text-teal-500" />
+            AntriCas
+            <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${showMainMenu ? 'rotate-90' : ''}`} />
           </button>
-          <button onClick={handleResetData} className="p-2 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors" aria-label="Reset Data">
-            <Trash2 className="w-5 h-5 flex-shrink-0" />
-          </button>
-          <button onClick={generateTransferUrl} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors" aria-label="Transfer via QR">
+
+          {/* MAIN MENU DROPDOWN */}
+          {showMainMenu && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowMainMenu(false)}></div>
+              <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <button 
+                  onClick={() => { setShowHelpModal(true); setShowMainMenu(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-100 dark:border-slate-800/50 transition-colors"
+                >
+                  <Info className="w-5 h-5 text-teal-500" /> Tutorial Penggunaan
+                </button>
+                <button 
+                  onClick={() => { setShowHistoryModal(true); setShowMainMenu(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-100 dark:border-slate-800/50 transition-colors"
+                >
+                  <History className="w-5 h-5 text-teal-500" /> Riwayat Hari Ini
+                </button>
+                <button 
+                  onClick={() => { toggleTheme(); setShowMainMenu(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold transition-colors"
+                >
+                  {theme === "dark" ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-indigo-500" />} 
+                  {theme === "dark" ? "Mode Terang" : "Mode Gelap"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={generateTransferUrl} 
+            className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-teal-500 active:scale-90 transition-all border border-transparent hover:border-teal-500/30" 
+            aria-label="Transfer via QR"
+          >
             <QrCode className="w-5 h-5 flex-shrink-0" />
           </button>
           <button 
-            onClick={toggleTheme} 
-            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors"
-            aria-label="Toggle theme"
+            onClick={handleResetData} 
+            className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-500 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 active:scale-90 transition-all border border-transparent hover:border-rose-500/30" 
+            aria-label="Reset Data"
           >
-            {theme === "dark" ? <Sun className="w-5 h-5 flex-shrink-0" /> : <Moon className="w-5 h-5 flex-shrink-0" />}
+            <Trash2 className="w-5 h-5 flex-shrink-0" />
           </button>
         </div>
       </header>
@@ -966,6 +1001,51 @@ export default function EVQueueApp() {
              </div>
            </div>
          </div>
+      )}
+
+      {/* HELP / TUTORIAL MODAL */}
+      {showHelpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2"><Info className="w-6 h-6 text-teal-500" /> Bantuan</h3>
+              <button onClick={() => setShowHelpModal(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-slate-700 transition-colors"><X className="w-5 h-5" /></button>
+            </div>
+            
+            <div className="flex flex-col gap-6">
+              <div className="flex gap-4">
+                <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center shrink-0"><Zap className="w-5 h-5 text-teal-600 dark:text-teal-400" /></div>
+                <div>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-200">Panggil Antrian</h4>
+                  <p className="text-sm text-slate-500">Tekan tombol <strong>"PANGGIL BERIKUTNYA"</strong> untuk memindah taksi terdepan ke mesin cas (nozzle) yang kosong.</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0"><RotateCcw className="w-5 h-5 text-amber-600 dark:text-amber-400" /></div>
+                <div>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-200">Urungkan (Undo)</h4>
+                  <p className="text-sm text-slate-500">Salah klik? Tombol <strong>Undo</strong> muncul di bawah selama 7 detik setelah data diproses.</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-4">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0"><QrCode className="w-5 h-5 text-blue-600 dark:text-blue-400" /></div>
+                <div>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-200">Operan Shift (QR)</h4>
+                  <p className="text-sm text-slate-500">Gunakan icon Barcode di kanan atas untuk memindah seluruh antrian ke HP rekan pengganti Anda.</p>
+                </div>
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => setShowHelpModal(false)}
+              className="w-full mt-8 py-4 rounded-xl font-bold bg-teal-500 text-white hover:bg-teal-400 transition-colors shadow-lg shadow-teal-500/20"
+            >
+              Saya Mengerti
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
