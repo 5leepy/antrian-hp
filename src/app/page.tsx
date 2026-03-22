@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import LZString from "lz-string";
-import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Search, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode } from "lucide-react";
+import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Search, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2 } from "lucide-react";
 
 type QueueItem = {
   id: string;
@@ -229,6 +229,22 @@ export default function Home() {
     }
   };
 
+  const handleResetData = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "Peringatan Berbahaya!",
+      message: "Tindakan ini akan menghapus semua antrian, riwayat yang berlangsung, dan data aplikasi secara permanen dari perangkat ini. Lanjutkan?",
+      onConfirm: () => {
+        setQueue([]);
+        setHistory([]);
+        localStorage.removeItem("ev_queue");
+        localStorage.removeItem("ev_history");
+        setConfirmDialog(null);
+        showToast("Seluruh data antrian & riwayat telah di-reset", "info");
+      }
+    });
+  };
+
   const handleFleetInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Hanya perbolehkan angka (0-9) dengan menghapus karakter lain
     const val = e.target.value.replace(/\D/g, '').slice(0, 3);
@@ -383,16 +399,19 @@ export default function Home() {
           <CarFront className="w-6 h-6 text-teal-500" />
           EV Queue
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button onClick={handleResetData} className="p-2 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors" aria-label="Reset Data">
+            <Trash2 className="w-5 h-5 flex-shrink-0" />
+          </button>
           <button onClick={generateTransferUrl} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors" aria-label="Transfer via QR">
-            <QrCode className="w-5 h-5" />
+            <QrCode className="w-5 h-5 flex-shrink-0" />
           </button>
           <button 
             onClick={toggleTheme} 
             className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors"
             aria-label="Toggle theme"
           >
-            {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            {theme === "dark" ? <Sun className="w-5 h-5 flex-shrink-0" /> : <Moon className="w-5 h-5 flex-shrink-0" />}
           </button>
         </div>
       </header>
