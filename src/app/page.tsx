@@ -109,7 +109,7 @@ export default function EVQueueApp() {
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrMode, setQrMode] = useState<"show" | "scan">("show");
   const [transferUrl, setTransferUrl] = useState("");
-  const [incomingTransfer, setIncomingTransfer] = useState<QueueItem[] | null>(null);
+  const [incomingTransfer, setIncomingTransfer] = useState<{ queue: QueueItem[], maxNozzles: number | null } | null>(null);
 
   // Sound Synth Ref (to avoid multiple instances)
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -183,7 +183,9 @@ export default function EVQueueApp() {
         if (decoded) {
           const parsed = JSON.parse(decoded);
           if (Array.isArray(parsed)) {
-            setIncomingTransfer(parsed);
+            setIncomingTransfer({ queue: parsed, maxNozzles: null });
+          } else if (parsed && parsed.q) {
+            setIncomingTransfer({ queue: parsed.q, maxNozzles: parsed.m || null });
           }
         }
       } catch (e) {
@@ -244,7 +246,8 @@ export default function EVQueueApp() {
   };
 
   const generateTransferUrl = () => {
-    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(queue));
+    const payload = { q: queue, m: maxNozzles };
+    const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(payload));
     const url = `${window.location.origin}?q=${compressed}`;
     setTransferUrl(url);
     setShowQrModal(true);
@@ -252,7 +255,10 @@ export default function EVQueueApp() {
 
   const acceptTransfer = () => {
     if (incomingTransfer) {
-      setQueue(incomingTransfer);
+      setQueue(incomingTransfer.queue);
+      if (incomingTransfer.maxNozzles) {
+        setMaxNozzles(incomingTransfer.maxNozzles);
+      }
       setIncomingTransfer(null);
       showToast("Antrian berhasil ditimpa dengan data transfer!", "success");
     }
@@ -262,14 +268,19 @@ export default function EVQueueApp() {
   const handleScanQr = (text: string) => {
     try {
       const url = new URL(text);
-      const encodedData = url.searchParams.get('data');
+      const encodedData = url.searchParams.get('q');
       if (!encodedData) throw new Error("No data flag");
       const decoded = LZString.decompressFromEncodedURIComponent(encodedData);
       if (!decoded) throw new Error("Failed decode");
-      const parsedQueue = JSON.parse(decoded);
-      if (!Array.isArray(parsedQueue)) throw new Error("Invalid structure");
+      const parsed = JSON.parse(decoded);
       
-      setIncomingTransfer(parsedQueue);
+      if (Array.isArray(parsed)) {
+        setIncomingTransfer({ queue: parsed, maxNozzles: null });
+      } else if (parsed && parsed.q) {
+        setIncomingTransfer({ queue: parsed.q, maxNozzles: parsed.m || null });
+      } else {
+        throw new Error("Invalid structure");
+      }
       setShowQrModal(false);
     } catch (e) {
       console.log("Scanner failed to parse QR:", text);
@@ -441,7 +452,7 @@ export default function EVQueueApp() {
           <div className="w-20 h-20 bg-teal-500 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-teal-500/40 mb-8">
             <Zap className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-3">Green SM Charging</h1>
+          <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-3">AntriCas</h1>
           <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed">Pilih konfigurasi stasiun / kapasitas Nozzle untuk memulai shift Anda hari ini.</p>
           
           <div className="flex flex-col gap-4">
@@ -950,7 +961,7 @@ export default function EVQueueApp() {
                <QrCode className="w-6 h-6 text-teal-600 dark:text-teal-400" />
              </div>
              <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2">Terima Transfer Antrian?</h3>
-             <p className="text-slate-600 dark:text-slate-400 font-medium mb-6 leading-relaxed">Ada data antrian masuk sejumlah {incomingTransfer.length} mobil. Jika diterima, antrian Anda saat ini akan <strong>ditimpa / terhapus</strong>.</p>
+             <p className="text-slate-600 dark:text-slate-400 font-medium mb-6 leading-relaxed">Ada data antrian masuk sejumlah {incomingTransfer.queue.length} mobil. Konfigurasi stasiun dan antrian saat ini akan <strong>ditimpa permanen</strong>.</p>
              <div className="flex gap-3">
                <button onClick={() => setIncomingTransfer(null)} className="flex-1 py-3 px-4 rounded-xl font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                  Batal
