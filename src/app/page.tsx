@@ -483,6 +483,18 @@ export default function EVQueueApp() {
                 <p className="text-sm text-slate-500">Mampu melayani hingga 12 taksi</p>
               </div>
             </button>
+            <div className="my-2 flex items-center gap-4">
+               <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
+               <span className="text-xs font-bold text-slate-400">ATAU TERIMA DATA</span>
+               <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
+            </div>
+            <button 
+               onClick={() => { setQrMode("scan"); setShowQrModal(true); }}
+               className="w-full bg-slate-100 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 p-4 rounded-2xl flex items-center justify-center gap-3 transition-all text-slate-600 dark:text-slate-400 font-bold active:scale-95"
+            >
+               <Camera className="w-5 h-5 text-teal-500" />
+               Scan Kode QR Handoff
+            </button>
           </div>
         </div>
       </div>
