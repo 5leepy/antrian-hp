@@ -581,7 +581,7 @@ export default function EVQueueApp() {
                 </span>
               </div>
 
-              <div className={`grid gap-3 ${maxNozzles === 12 ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2'}`}>
+              <div className={`grid gap-3 ${maxNozzles === 12 ? 'grid-cols-3 sm:grid-cols-4' : maxNozzles === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 {Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
                   const car = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
                   return (
@@ -715,7 +715,7 @@ export default function EVQueueApp() {
                       </div>
                     </div>
 
-                    <div className={`grid gap-3 ${maxNozzles === 12 ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-2'}`}>
+                    <div className={`grid gap-3 ${maxNozzles === 12 ? 'grid-cols-3 sm:grid-cols-4' : maxNozzles === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                       {Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
                         const occupied = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
                         return (
