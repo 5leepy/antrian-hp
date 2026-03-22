@@ -19,12 +19,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "EV Queue System",
-  description: "Simple mobile-first electric vehicle charging queue",
+  title: "Green SM Charging",
+  description: "Aplikasi manajemen antrian pengisian daya taksi Green SM",
   manifest: "/manifest",
   appleWebApp: {
     capable: true,
-    title: "EV Queue",
+    title: "Green SM",
     statusBarStyle: "black-translucent",
   }
 };
@@ -43,7 +43,7 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icon" />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 overscroll-none">
         {children}
         <script
           dangerouslySetInnerHTML={{

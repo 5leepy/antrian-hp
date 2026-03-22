@@ -393,11 +393,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans transition-colors duration-300">
-      {/* HEADER */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 sticky top-0 z-10 shadow-sm flex items-center justify-between">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent flex items-center gap-2">
+      <header className="sticky top-0 z-40 flex border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md justify-between items-center p-4">
+        <h1 className="text-xl font-black bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent flex items-center gap-2">
           <CarFront className="w-6 h-6 text-teal-500" />
-          EV Queue
+          Green SM Charging
         </h1>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <button onClick={handleResetData} className="p-2 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors" aria-label="Reset Data">
@@ -704,6 +703,13 @@ export default function Home() {
         )}
 
       </main>
+
+      {/* FOOTER BRANDING */}
+      <footer className="w-full py-6 text-center mt-auto border-t border-slate-200 dark:border-slate-800/50 bg-white dark:bg-slate-900/30">
+        <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 tracking-wide uppercase">
+          Developed by <span className="text-teal-500 font-bold">Nadir Nahdi</span>
+        </p>
+      </footer>
 
       {/* TOAST NOTIFICATION */}
       {toast && (
