@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import LZString from "lz-string";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Search, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera } from "lucide-react";
+import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Search, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera } from "lucide-react";
 
 type QueueItem = {
   id: string;
@@ -92,7 +92,6 @@ export default function EVQueueApp() {
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [toast, setToast] = useState<ToastType | null>(null);
   const [searchHistory, setSearchHistory] = useState("");
 
@@ -119,32 +118,34 @@ export default function EVQueueApp() {
     return () => clearInterval(timer);
   }, []);
 
-  // Hydrate localstorage limits
+  // Hydrate localstorage limits & Auto-Detect Theme
   useEffect(() => {
     const savedQueue = localStorage.getItem("ev_queue");
     const savedHistory = localStorage.getItem("ev_history");
-    const savedTheme = localStorage.getItem("ev_theme");
     const savedNozzles = localStorage.getItem("ev_max_nozzles");
 
     if (savedQueue) setQueue(JSON.parse(savedQueue));
     if (savedHistory) setHistory(JSON.parse(savedHistory));
-    
-    if (savedTheme === "light" || savedTheme === "dark") {
-      setTheme(savedTheme);
-      if (savedTheme === "light") {
-        document.documentElement.classList.remove("dark");
-      } else {
-        document.documentElement.classList.add("dark");
-      }
-    } else {
-      // Default to dark
-      document.documentElement.classList.add("dark");
-    }
     if (savedNozzles) {
       setMaxNozzles(parseInt(savedNozzles, 10));
     }
 
+    // Auto-detect system theme
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const applyTheme = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    };
+    
+    applyTheme(mediaQuery);
+    mediaQuery.addEventListener("change", applyTheme);
+
     setIsLoaded(true);
+
+    return () => mediaQuery.removeEventListener("change", applyTheme);
   }, []);
 
   // Save to localstorage
@@ -152,10 +153,10 @@ export default function EVQueueApp() {
     if (isLoaded) {
       localStorage.setItem("ev_queue", JSON.stringify(queue));
       localStorage.setItem("ev_history", JSON.stringify(history));
-      localStorage.setItem("ev_theme", theme);
       if (maxNozzles) localStorage.setItem("ev_max_nozzles", maxNozzles.toString());
+      localStorage.removeItem("ev_theme"); // clean up legacy
     }
-  }, [queue, history, theme, maxNozzles, isLoaded]);
+  }, [queue, history, maxNozzles, isLoaded]);
 
   // Handle incoming transfer URL
   useEffect(() => {
@@ -179,15 +180,7 @@ export default function EVQueueApp() {
     }
   }, [isLoaded]);
 
-  const toggleTheme = () => {
-    const newTheme = theme === "dark" ? "light" : "dark";
-    setTheme(newTheme);
-    if (newTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  };
+
 
   const showToast = (message: string, type: "success" | "error" | "info" = "info") => {
     const id = Date.now();
@@ -491,13 +484,6 @@ export default function EVQueueApp() {
           </button>
           <button onClick={generateTransferUrl} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors" aria-label="Transfer via QR">
             <QrCode className="w-5 h-5 flex-shrink-0" />
-          </button>
-          <button 
-            onClick={toggleTheme} 
-            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors"
-            aria-label="Toggle theme"
-          >
-            {theme === "dark" ? <Sun className="w-5 h-5 flex-shrink-0" /> : <Moon className="w-5 h-5 flex-shrink-0" />}
           </button>
         </div>
       </header>
