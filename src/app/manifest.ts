@@ -2,8 +2,8 @@ import { MetadataRoute } from 'next'
  
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Green SM Charging',
-    short_name: 'Green SM',
+    name: 'AntriCas EV Queue Planner',
+    short_name: 'AntriCas',
     description: 'Manajemen antrian pengisian daya taksi listrik (EV).',
     start_url: '/',
     display: 'standalone',

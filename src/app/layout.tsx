@@ -19,12 +19,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Green SM Charging",
-  description: "Aplikasi manajemen antrian pengisian daya taksi Green SM",
+  title: "AntriCas Charging",
+  description: "Aplikasi manajemen antrian pengisian daya taksi",
   manifest: "/manifest",
   appleWebApp: {
     capable: true,
-    title: "Green SM",
+    title: "AntriCas",
     statusBarStyle: "black-translucent",
   }
 };

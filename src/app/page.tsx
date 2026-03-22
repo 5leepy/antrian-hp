@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import LZString from "lz-string";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Search, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera } from "lucide-react";
+import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Search, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera } from "lucide-react";
 
 type QueueItem = {
   id: string;
@@ -92,6 +92,7 @@ export default function EVQueueApp() {
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [toast, setToast] = useState<ToastType | null>(null);
   const [searchHistory, setSearchHistory] = useState("");
 
@@ -118,7 +119,7 @@ export default function EVQueueApp() {
     return () => clearInterval(timer);
   }, []);
 
-  // Hydrate localstorage limits & Auto-Detect Theme
+  // Hydrate localstorage limits & Hybrid Theme
   useEffect(() => {
     const savedQueue = localStorage.getItem("ev_queue");
     const savedHistory = localStorage.getItem("ev_history");
@@ -130,22 +131,35 @@ export default function EVQueueApp() {
       setMaxNozzles(parseInt(savedNozzles, 10));
     }
 
-    // Auto-detect system theme
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const applyTheme = (e: MediaQueryListEvent | MediaQueryList) => {
-      if (e.matches) {
+    const savedTheme = localStorage.getItem("ev_theme");
+    const applyTheme = (isDark: boolean) => {
+      setTheme(isDark ? "dark" : "light");
+      if (isDark) {
         document.documentElement.classList.add("dark");
       } else {
         document.documentElement.classList.remove("dark");
       }
     };
+
+    if (savedTheme === "light" || savedTheme === "dark") {
+       applyTheme(savedTheme === "dark");
+    } else {
+       // Auto-detect system theme since no preference
+       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+       applyTheme(mediaQuery.matches);
+       
+       const handleSystemThemeChange = (e: MediaQueryListEvent) => {
+         if (!localStorage.getItem("ev_theme")) {
+           applyTheme(e.matches);
+         }
+       };
+       mediaQuery.addEventListener("change", handleSystemThemeChange);
+       
+       setIsLoaded(true);
+       return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
+    }
     
-    applyTheme(mediaQuery);
-    mediaQuery.addEventListener("change", applyTheme);
-
     setIsLoaded(true);
-
-    return () => mediaQuery.removeEventListener("change", applyTheme);
   }, []);
 
   // Save to localstorage
@@ -181,6 +195,17 @@ export default function EVQueueApp() {
   }, [isLoaded]);
 
 
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    localStorage.setItem("ev_theme", newTheme);
+    if (newTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  };
 
   const showToast = (message: string, type: "success" | "error" | "info" = "info") => {
     const id = Date.now();
@@ -473,7 +498,7 @@ export default function EVQueueApp() {
       <header className="sticky top-0 z-40 flex border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md justify-between items-center p-4">
         <h1 className="text-xl font-black bg-gradient-to-r from-teal-500 to-emerald-500 bg-clip-text text-transparent flex items-center gap-2">
           <CarFront className="w-6 h-6 text-teal-500" />
-          Green SM Charging
+          AntriCas
         </h1>
         <div className="flex items-center gap-1.5 sm:gap-2">
           <button onClick={() => setShowHistoryModal(true)} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors" aria-label="Riwayat Hari Ini">
@@ -484,6 +509,13 @@ export default function EVQueueApp() {
           </button>
           <button onClick={generateTransferUrl} className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors" aria-label="Transfer via QR">
             <QrCode className="w-5 h-5 flex-shrink-0" />
+          </button>
+          <button 
+            onClick={toggleTheme} 
+            className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-teal-500 transition-colors"
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? <Sun className="w-5 h-5 flex-shrink-0" /> : <Moon className="w-5 h-5 flex-shrink-0" />}
           </button>
         </div>
       </header>

@@ -22,7 +22,7 @@ export default function Icon() {
           boxShadow: 'inset 0 0 100px rgba(0,0,0,0.2)'
         }}
       >
-        EV
+        AC
       </div>
     ),
     { ...size }
