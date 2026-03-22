@@ -549,7 +549,19 @@ export default function EVQueueApp() {
                   return (
                     <div 
                       key={n} 
-                      onClick={() => { if(car && window.confirm(`Selesaikan taksi ${car.fleetNumber}?`)) executeAction(car, "completed")}}
+                      onClick={() => { 
+                        if(car) {
+                          setConfirmDialog({
+                            isOpen: true,
+                            title: "Selesai Pengecasan?",
+                            message: `Taksi lambung ${car.fleetNumber} (Nozzle ${n}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
+                            onConfirm: () => {
+                              executeAction(car, "completed");
+                              setConfirmDialog(null);
+                            }
+                          });
+                        }
+                      }}
                       className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-sm cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95' : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 border-dashed opacity-80'}`}
                     >
                       <span className="absolute top-1.5 left-2 text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500">N-{n}</span>
