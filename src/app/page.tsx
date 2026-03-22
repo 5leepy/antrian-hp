@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import LZString from "lz-string";
-import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Search, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2 } from "lucide-react";
+import { Scanner } from "@yudiel/react-qr-scanner";
+import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Search, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera } from "lucide-react";
 
 type QueueItem = {
   id: string;
@@ -106,6 +107,7 @@ export default function EVQueueApp() {
 
   // Transfer State
   const [showQrModal, setShowQrModal] = useState(false);
+  const [qrMode, setQrMode] = useState<"show" | "scan">("show");
   const [transferUrl, setTransferUrl] = useState("");
   const [incomingTransfer, setIncomingTransfer] = useState<QueueItem[] | null>(null);
 
@@ -235,6 +237,24 @@ export default function EVQueueApp() {
       setQueue(incomingTransfer);
       setIncomingTransfer(null);
       showToast("Antrian berhasil ditimpa dengan data transfer!", "success");
+    }
+  };
+
+  // Handle Incoming Scanner QR
+  const handleScanQr = (text: string) => {
+    try {
+      const url = new URL(text);
+      const encodedData = url.searchParams.get('data');
+      if (!encodedData) throw new Error("No data flag");
+      const decoded = LZString.decompressFromEncodedURIComponent(encodedData);
+      if (!decoded) throw new Error("Failed decode");
+      const parsedQueue = JSON.parse(decoded);
+      if (!Array.isArray(parsedQueue)) throw new Error("Invalid structure");
+      
+      setIncomingTransfer(parsedQueue);
+      setShowQrModal(false);
+    } catch (e) {
+      console.log("Scanner failed to parse QR:", text);
     }
   };
 
@@ -862,16 +882,40 @@ export default function EVQueueApp() {
          </div>
        )}
 
-      {/* QR CODE MODAL */}
+      {/* QR CODE MODAL & SCANNER */}
       {showQrModal && (
          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
            <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 flex flex-col items-center">
-             <h3 className="text-xl font-black text-slate-800 dark:text-teal-400 mb-2">Transfer Antrian</h3>
-             <p className="text-slate-500 text-center text-sm mb-6">Minta operator pengganti untuk men-scan QR ini menggunakan kamera HP mereka.</p>
-             <div className="bg-white p-4 rounded-2xl shadow-inner border border-slate-200 mb-6">
-               <QRCodeSVG value={transferUrl} size={200} level="M" />
+             
+             {/* TOGGLE TABS */}
+             <div className="flex w-full bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl mb-6">
+                <button onClick={() => setQrMode("show")} className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all ${qrMode === 'show' ? 'bg-white dark:bg-slate-900 shadow-sm text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}>Tampilkan QR</button>
+                <button onClick={() => setQrMode("scan")} className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-bold rounded-lg transition-all ${qrMode === 'scan' ? 'bg-white dark:bg-slate-900 shadow-sm text-teal-600 dark:text-teal-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}><Camera className="w-5 h-5"/> Scan Kamera</button>
              </div>
-             <button onClick={() => setShowQrModal(false)} className="w-full py-3 rounded-xl font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+
+             {qrMode === "show" ? (
+               <>
+                 <h3 className="text-xl font-black text-slate-800 dark:text-teal-400 mb-2">Transfer Antrian</h3>
+                 <p className="text-slate-500 text-center text-sm mb-6">Minta operator pengganti untuk men-scan QR ini menggunakan kamera HP mereka.</p>
+                 <div className="bg-white p-4 rounded-2xl shadow-inner border border-slate-200 mb-6">
+                   <QRCodeSVG value={transferUrl} size={200} level="M" />
+                 </div>
+               </>
+             ) : (
+               <div className="w-full aspect-square bg-slate-950 rounded-2xl overflow-hidden mb-6 relative border-4 border-slate-800 flex items-center justify-center shadow-inner">
+                 <Scanner 
+                    onScan={(result) => {
+                      const text = Array.isArray(result) ? result[0]?.rawValue : (result as any)?.rawValue || result;
+                      if(text) handleScanQr(text.toString());
+                    }} 
+                 />
+                 <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
+                    <span className="bg-black/70 text-white text-xs font-bold px-4 py-2 rounded-full backdrop-blur-sm border border-white/20 shadow-xl">Arahkan ke layar HP operator asal</span>
+                 </div>
+               </div>
+             )}
+
+             <button onClick={() => setShowQrModal(false)} className="w-full py-4 rounded-xl font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors active:scale-95">
                Tutup
              </button>
            </div>
