@@ -666,15 +666,28 @@ export default function EVQueueApp() {
               <div className={`grid gap-4 ${maxNozzles === 12 ? 'grid-cols-2' : maxNozzles === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 {maxNozzles === 12 ? (
                   // Grouped Dispenser Layout for 12 Nozzles
-                  Array.from({ length: 6 }, (_, i) => i + 1).map(dispenserNum => (
-                    <div key={dispenserNum} className="bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-3xl p-3 flex flex-col gap-2 shadow-sm">
+                  Array.from({ length: 6 }, (_, i) => i + 1).map(dispenserNum => {
+                    const nA = dispenserNum * 2 - 1;
+                    const nB = dispenserNum * 2;
+                    const carA = chargingCars.find(c => c.assignedNozzle === nA) || (chargingCars[nA-1] && !chargingCars[nA-1].assignedNozzle ? chargingCars[nA-1] : undefined);
+                    const carB = chargingCars.find(c => c.assignedNozzle === nB) || (chargingCars[nB-1] && !chargingCars[nB-1].assignedNozzle ? chargingCars[nB-1] : undefined);
+                    const isFull = carA && carB;
+
+                    return (
+                    <div key={dispenserNum} className={`bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-3xl p-3 flex flex-col gap-2 transition-all duration-500 ${isFull ? 'shadow-[0_0_15px_rgba(20,184,166,0.15)] bg-teal-50/30 dark:bg-teal-900/10 border-teal-200 dark:border-teal-500/20' : 'shadow-sm'}`}>
                       <div className="flex justify-between items-center px-1">
-                        <span className="text-[10px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase">Dispenser {dispenserNum}</span>
-                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase">Dispenser {dispenserNum}</span>
+                        </div>
+                        {/* Status LEDs */}
+                        <div className="flex gap-1.5 p-1 bg-slate-200/50 dark:bg-slate-700/50 rounded-full">
+                          <div className={`w-2 h-2 rounded-full transition-all duration-500 ${carA ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                          <div className={`w-2 h-2 rounded-full transition-all duration-500 ${carB ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        {[dispenserNum * 2 - 1, dispenserNum * 2].map(n => {
-                          const car = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
+                        {[nA, nB].map(n => {
+                          const car = n === nA ? carA : carB;
                           const label = nozzleLabel(n, maxNozzles);
                           const side = label.split('-')[1]; // Get 'A' or 'B'
                           
@@ -694,7 +707,7 @@ export default function EVQueueApp() {
                                     });
                                 }
                               }}
-                              className={`rounded-2xl p-3 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95' : 'bg-white/50 dark:bg-slate-900/30 border-slate-200/60 dark:border-slate-800/60 border-dashed backdrop-blur-sm'}`}
+                              className={`rounded-2xl p-3 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950' : 'bg-white/50 dark:bg-slate-900/30 border-slate-200/60 dark:border-slate-800/60 border-dashed backdrop-blur-sm'}`}
                             >
                               <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-1">{side}</span>
                               {car ? (
@@ -705,14 +718,14 @@ export default function EVQueueApp() {
                                   </span>
                                 </>
                               ) : (
-                                <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 my-1">READY</span>
+                                <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 my-1 font-mono tracking-widest uppercase opacity-40">Ready</span>
                               )}
                             </div>
                           );
                         })}
                       </div>
                     </div>
-                  ))
+                  )})
                 ) : (
                   // Simple Grid Layout for 1-2 Nozzles
                   Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
