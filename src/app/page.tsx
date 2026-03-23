@@ -100,6 +100,7 @@ export default function EVQueueApp() {
 
   // Edit State
   const [editingItem, setEditingItem] = useState<{ id: string; fleetNumber: string } | null>(null);
+  const [selectedDispenser, setSelectedDispenser] = useState<number | null>(null);
 
   // Undo State
   const [undoItem, setUndoItem] = useState<{ item: QueueItem; timeoutId: NodeJS.Timeout; prevStatus: QueueItem['status']; replacedCar?: QueueItem; startTime: number } | null>(null);
@@ -145,8 +146,8 @@ export default function EVQueueApp() {
 
     if (savedTheme === "light" || savedTheme === "dark") {
        applyTheme(savedTheme === "dark");
+       setIsLoaded(true);
     } else {
-       // Auto-detect system theme since no preference
        const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
        applyTheme(mediaQuery.matches);
        
@@ -156,13 +157,18 @@ export default function EVQueueApp() {
          }
        };
        mediaQuery.addEventListener("change", handleSystemThemeChange);
-       
        setIsLoaded(true);
        return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
     }
-    
-    setIsLoaded(true);
   }, []);
+
+  const nozzleLabel = (n: number, max: number | null) => {
+    const total = max || 2;
+    if (total <= 2) return n === 1 ? 'A' : 'B';
+    const disp = Math.ceil(n / 2);
+    const side = n % 2 === 1 ? 'A' : 'B';
+    return `N${disp}-${side}`;
+  };
 
   // Save to localstorage
   useEffect(() => {
@@ -448,6 +454,7 @@ export default function EVQueueApp() {
   // Shared dispatch logic (used by modal AND auto-dispatch)
   const dispatchToNozzle = (nozzleNum: number, nextCar: QueueItem, occupied?: QueueItem) => {
     const now = Date.now();
+    const label = nozzleLabel(nozzleNum, maxNozzles);
     if (occupied) {
       const completedOccupied = { ...occupied, status: "completed" as const, completedTime: now };
       setQueue(prev => prev.filter(q => q.id !== occupied.id));
@@ -459,7 +466,7 @@ export default function EVQueueApp() {
     if (undoItem) clearTimeout(undoItem.timeoutId);
     const timeoutId = setTimeout(() => setUndoItem(null), 7000);
     setUndoItem({ item: dispatchedCar, timeoutId, prevStatus: "waiting", replacedCar: occupied ? { ...occupied } : undefined, startTime: now });
-    showToast(`Taksi ${nextCar.fleetNumber} dipanggil ke Nozzle ${nozzleNum}`, "info");
+    showToast(`Taksi ${nextCar.fleetNumber} dipanggil ke Nozzle ${label}`, "info");
   };
 
   const handleSkip = (item: QueueItem, index: number) => {
@@ -664,20 +671,21 @@ export default function EVQueueApp() {
                       key={n} 
                       onClick={() => { 
                         if(car) {
-                          setConfirmDialog({
-                            isOpen: true,
-                            title: "Selesai Pengecasan?",
-                            message: `Taksi lambung ${car.fleetNumber} (Nozzle ${n}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
-                            onConfirm: () => {
-                              executeAction(car, "completed");
-                              setConfirmDialog(null);
-                            }
-                          });
+                            const label = nozzleLabel(n, maxNozzles);
+                            setConfirmDialog({
+                              isOpen: true,
+                              title: "Selesai Pengecasan?",
+                              message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
+                              onConfirm: () => {
+                                executeAction(car, "completed");
+                                setConfirmDialog(null);
+                              }
+                            });
                         }
                       }}
                       className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-sm cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95' : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 border-dashed opacity-80'}`}
                     >
-                      <span className="absolute top-1.5 left-2 text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500">N-{n}</span>
+                      <span className="absolute top-1.5 left-2 text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500">{nozzleLabel(n, maxNozzles)}</span>
                       {car ? (
                         <>
                           <div className="absolute top-0 right-0 w-8 h-8 bg-teal-100 dark:bg-teal-500/20 rounded-bl-full flex items-start justify-end pr-1 pt-1 opacity-50"></div>
@@ -788,8 +796,16 @@ export default function EVQueueApp() {
               <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                 <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in slide-in-from-bottom-10">
                     <div className="flex justify-between items-center mb-6">
-                      <h3 className="text-xl font-black text-slate-800 dark:text-white">Pilih Nozzle Target</h3>
-                      <button onClick={() => setShowDispatchModal(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
+                      <h3 className="text-xl font-black text-slate-800 dark:text-white">
+                        {maxNozzles === 12 && selectedDispenser === null ? "Pilih Dispenser" : "Pilih Nozzle Target"}
+                      </h3>
+                      <button 
+                        onClick={() => {
+                          setShowDispatchModal(false);
+                          setSelectedDispenser(null);
+                        }} 
+                        className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                      >
                         <X className="w-5 h-5" />
                       </button>
                     </div>
@@ -797,40 +813,72 @@ export default function EVQueueApp() {
                     <div className="mb-6 bg-teal-50 dark:bg-teal-500/10 p-4 rounded-2xl border border-teal-100 dark:border-teal-500/20 flex items-center gap-4">
                       <div className="w-14 h-14 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center font-black text-2xl text-teal-600 dark:text-teal-400 shadow-sm border border-teal-100 dark:border-teal-500/20">{waitingCars[0].fleetNumber}</div>
                       <div>
-                        <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-0.5">Antrian #1 Masuk</p>
-                        <p className="text-slate-600 dark:text-slate-300 text-sm font-medium leading-tight">Pilih kotak nozzle di bawah untuk mengalihkan taksi ini.</p>
+                        {maxNozzles === 12 && selectedDispenser !== null ? (
+                          <button 
+                            onClick={() => setSelectedDispenser(null)}
+                            className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 mb-0.5"
+                          >
+                            <ChevronRight className="w-3 h-3 rotate-180" /> Kembali ke Dispenser
+                          </button>
+                        ) : (
+                          <p className="text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-0.5">Antrian #1 Masuk</p>
+                        )}
+                        <p className="text-slate-600 dark:text-slate-300 text-sm font-medium leading-tight">
+                          {maxNozzles === 12 && selectedDispenser === null 
+                            ? "Pilih dispenser stasiun untuk pengecasan." 
+                            : "Pilih kotak nozzle di bawah untuk mengalihkan taksi ini."}
+                        </p>
                       </div>
                     </div>
 
-                    <div className={`grid gap-3 ${maxNozzles === 12 ? 'grid-cols-3 sm:grid-cols-4' : maxNozzles === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                      {Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
-                        const occupied = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
-                        const chargingMins = occupied ? Math.floor((currentTime - (occupied.chargingTime || occupied.enqueueTime)) / 60000) : 0;
-                        return (
-                          <button 
-                            key={n} 
-                            onClick={() => {
-                              dispatchToNozzle(n, waitingCars[0], occupied);
-                              setShowDispatchModal(false);
-                            }}
-                            className={`p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all active:scale-95 ${occupied ? 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-500/50'}`}
+                    {maxNozzles === 12 && selectedDispenser === null ? (
+                      <div className="grid grid-cols-3 gap-3">
+                        {Array.from({ length: 6 }, (_, i) => i + 1).map(disp => (
+                          <button
+                            key={disp}
+                            onClick={() => setSelectedDispenser(disp)}
+                            className="p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col items-center justify-center transition-all active:scale-95 hover:border-teal-400 dark:hover:border-teal-500/50"
                           >
-                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Nz {n}</span>
-                            {occupied ? (
-                              <>
-                                <span className="font-black text-xl text-slate-800 dark:text-white">{occupied.fleetNumber}</span>
-                                <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-0.5 mt-0.5">
-                                  <Clock className="w-2.5 h-2.5" />{chargingMins}m
-                                </span>
-                                <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded mt-1 font-bold tracking-widest shadow-sm">GANTI</span>
-                              </>
-                            ) : (
-                              <span className="font-bold text-teal-600 dark:text-teal-400 text-sm mt-3 mb-1">KOSONG</span>
-                            )}
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Stn</span>
+                            <span className="font-black text-xl text-slate-800 dark:text-white">N{disp}</span>
                           </button>
-                        )
-                      })}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={`grid gap-3 ${maxNozzles === 12 ? 'grid-cols-2' : maxNozzles === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                        {(maxNozzles === 12 
+                          ? [selectedDispenser! * 2 - 1, selectedDispenser! * 2] 
+                          : Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1)
+                        ).map(n => {
+                          const occupied = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
+                          const chargingMins = occupied ? Math.floor((currentTime - (occupied.chargingTime || occupied.enqueueTime)) / 60000) : 0;
+                          return (
+                            <button 
+                              key={n} 
+                              onClick={() => {
+                                dispatchToNozzle(n, waitingCars[0], occupied);
+                                setShowDispatchModal(false);
+                                setSelectedDispenser(null);
+                              }}
+                              className={`p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all active:scale-95 ${occupied ? 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-500/50'}`}
+                            >
+                              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">{nozzleLabel(n, maxNozzles)}</span>
+                              {occupied ? (
+                                <>
+                                  <span className="font-black text-xl text-slate-800 dark:text-white">{occupied.fleetNumber}</span>
+                                  <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-0.5 mt-0.5">
+                                    <Clock className="w-2.5 h-2.5" />{chargingMins}m
+                                  </span>
+                                  <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded mt-1 font-bold tracking-widest shadow-sm">GANTI</span>
+                                </>
+                              ) : (
+                                <span className="font-bold text-teal-600 dark:text-teal-400 text-sm mt-3 mb-1">KOSONG</span>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
                 </div>
               </div>
             )}
