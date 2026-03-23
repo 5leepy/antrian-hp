@@ -924,28 +924,30 @@ export default function EVQueueApp() {
                                 isFull 
                                 ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-500/30' 
                                 : carA || carB
-                                ? 'bg-white dark:bg-slate-900 border-amber-100 dark:border-amber-500/20'
-                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500/50'
+                                ? 'bg-white dark:bg-slate-900 border-amber-100 dark:border-amber-500/20 shadow-sm shadow-amber-500/5'
+                                : 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-500/30 shadow-sm shadow-emerald-500/5'
                             }`}
                           >
-                            <span className={`text-3xl font-black ${isFull ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-white'}`}>D{disp}</span>
+                            <span className={`text-3xl font-black ${
+                              isFull ? 'text-amber-600 dark:text-amber-400' : 
+                              (carA || carB) ? 'text-slate-800 dark:text-white' : 
+                              'text-emerald-600 dark:text-emerald-400'
+                            }`}>D{disp}</span>
                             
                             {/* Occupancy Indicators */}
-                            <div className="flex gap-1.5 mt-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-full">
+                            <div className="flex gap-1.5 mt-2 p-1 bg-white/60 dark:bg-slate-800/80 rounded-full shadow-inner">
                                 <div className={`w-2 h-2 rounded-full transition-all ${carA ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)]' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
                                 <div className={`w-2 h-2 rounded-full transition-all ${carB ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)]' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
                             </div>
 
                             {isFull && (
-                                <div className="absolute bottom-2 right-2">
-                                    <span className="bg-rose-500/80 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow-sm uppercase tracking-tighter">FULL</span>
+                                <div className="absolute top-2 right-1 rotate-[15deg]">
+                                    <span className="bg-rose-500/70 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow-md uppercase tracking-tighter border border-white/20">FULL</span>
                                 </div>
                             )}
                             
-                            {/* Subtle Inner Glow for active ones */}
-                            {(carA || carB) && (
-                                <div className={`absolute inset-0 pointer-events-none border-4 transition-opacity duration-500 ${isFull ? 'border-amber-400/10 opacity-100' : 'border-amber-400/5 opacity-50'}`}></div>
-                            )}
+                            {/* Inner Glow Effect */}
+                            <div className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${isFull ? 'bg-amber-400/5 opacity-100' : (carA || carB) ? 'bg-amber-400/5 opacity-50' : 'bg-emerald-400/5 opacity-100'}`}></div>
                           </button>
                         )})}
                       </div>
