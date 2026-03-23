@@ -938,7 +938,7 @@ export default function EVQueueApp() {
 
                             {isFull && (
                                 <div className="absolute -top-1 -right-1">
-                                    <div className="bg-amber-500 text-white text-[7px] font-black px-2 py-1 rounded-bl-xl shadow-sm tracking-tighter uppercase">BUSY</div>
+                                    <div className="bg-amber-500 text-white text-[7px] font-black px-2 py-1 rounded-bl-xl shadow-sm tracking-tighter uppercase">FULL</div>
                                 </div>
                             )}
                             
