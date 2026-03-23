@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import LZString from "lz-string";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera } from "lucide-react";
+import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera, Save } from "lucide-react";
 
 type QueueItem = {
   id: string;
@@ -368,6 +368,13 @@ export default function EVQueueApp() {
 
   const executeAction = (item: QueueItem, action: "charging" | "completed" | "cancelled") => {
     if (action === "charging") {
+      // When replacing a dummy car, do NOT executeAction (which might add to history)
+      // Just filter it out silently.
+      const existingAtNozzle = queue.find(q => q.assignedNozzle === item.assignedNozzle && q.status === "charging");
+      if (existingAtNozzle && (existingAtNozzle as any).isUnknown) { // Assuming item.assignedNozzle is the target nozzle
+        setQueue(prev => prev.filter(q => q.id !== existingAtNozzle.id));
+      }
+
       setQueue((prev) => prev.map(q => q.id === item.id ? { ...q, status: "charging", chargingTime: Date.now() } : q));
       showToast(`Taksi ${item.fleetNumber} mulai charging`, "info");
     } else {
@@ -377,18 +384,19 @@ export default function EVQueueApp() {
       
       setQueue((prev) => prev.filter((q) => q.id !== item.id));
       
-      // STRICT: Never add to history if it's an 'Unknown' car
-      if ((item as any).isUnknown || item.fleetNumber === "---") {
-          showToast(`Sesi (Tanpa Riwayat) selesai`, "info");
+      // STRICT: Never add to history if it's an 'Unknown' car or placeholder
+      const isDummy = (item as any).isUnknown || item.fleetNumber === "---";
+      
+      if (isDummy) {
+          showToast(`Selesai (Tanpa Riwayat)`, "info");
       } else {
           setHistory((prev) => [updatedItem, ...prev]);
-          showToast(`Taksi ${item.fleetNumber} selesai & tersimpan di riwayat`, "success");
+          showToast(`Taksi ${item.fleetNumber} selesai & tersimpan`, "success");
       }
 
       if (action === "completed") {
         playBeep();
       }
-      showToast(`Taksi ${item.fleetNumber} dipindah ke Riwayat (${action === 'completed' ? 'Selesai' : 'Batal'})`, "success");
 
       // Set Undo 
       if (undoItem) clearTimeout(undoItem.timeoutId);
@@ -765,84 +773,56 @@ export default function EVQueueApp() {
                     </div>
                   )})
                 ) : (
-                  // Simple Grid Layout for 1-2 Nozzles
+                  // Original Standalone Layout for 1-2 Nozzles (Reverted for better proportions)
                   Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
                     const car = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
                     const label = nozzleLabel(n, maxNozzles);
                     return (
-                ) : (
-                  // Dispenser Card Layout for 1-2 Nozzles (Synced with 12-Nozzle Design)
-                  Array.from({ length: 1 }, (_, i) => i + 1).map(dispenserNum => {
-                    const nA = 1;
-                    const nB = 2;
-                    const carA = chargingCars.find(c => c.assignedNozzle === nA) || (chargingCars[nA-1] && !chargingCars[nA-1].assignedNozzle ? chargingCars[nA-1] : undefined);
-                    const carB = chargingCars.find(c => c.assignedNozzle === nB) || (chargingCars[nB-1] && !chargingCars[nB-1].assignedNozzle ? chargingCars[nB-1] : undefined);
-                    const isFull = carA && carB;
-
-                    return (
-                    <div key={dispenserNum} className={`bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 flex flex-col gap-3 transition-all duration-500 ${isFull ? 'shadow-[0_0_20px_rgba(20,184,166,0.2)] bg-teal-50/30 dark:bg-teal-900/10 border-teal-200 dark:border-teal-500/20' : 'shadow-sm'}`}>
-                      <div className="flex justify-between items-center px-1">
-                        <div className="flex flex-col">
-                          <span className="text-xs font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase">Dispenser 1 (Standar)</span>
-                        </div>
-                        {/* Status LEDs */}
-                        <div className="flex gap-2 p-1.5 bg-slate-200/50 dark:bg-slate-700/50 rounded-full">
-                          <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${carA ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
-                          <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${carB ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {[nA, nB].map(n => {
-                          const car = n === nA ? carA : carB;
-                          const label = nozzleLabel(n, maxNozzles);
-                          const side = label.split('-')[1] || (n === 1 ? 'A' : 'B');
-                          
-                          return (
-                            <div 
-                              key={n} 
-                              onClick={() => { 
-                                if(car) {
-                                    if ((car as any).isUnknown && car.fleetNumber === "---") {
-                                        setIdentifyingCar(car);
-                                        setIdentifyInput("");
-                                    } else {
-                                        setConfirmDialog({
-                                          isOpen: true,
-                                          title: "Selesai Pengecasan?",
-                                          message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
-                                          onConfirm: () => {
-                                            executeAction(car, "completed");
-                                            setConfirmDialog(null);
-                                          }
-                                        });
-                                    }
+                      <div key={n} className="flex flex-col gap-2">
+                        <div 
+                          key={n} 
+                          onClick={() => { 
+                            if(car) {
+                                if ((car as any).isUnknown && car.fleetNumber === "---") {
+                                    setIdentifyingCar(car);
+                                    setIdentifyInput("");
+                                } else {
+                                    setConfirmDialog({
+                                      isOpen: true,
+                                      title: "Selesai Pengecasan?",
+                                      message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
+                                      onConfirm: () => {
+                                        executeAction(car, "completed");
+                                        setConfirmDialog(null);
+                                      }
+                                    });
                                 }
-                              }}
-                              className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all min-h-[140px] ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95' : 'bg-white/50 dark:bg-slate-900/30 border-slate-200/60 dark:border-slate-800/60 border-dashed backdrop-blur-sm'}`}
-                            >
-                              <span className="text-xs font-black text-slate-400 dark:text-slate-500 mb-1">{side}</span>
-                              {car ? (
-                                <>
-                                  {(car as any).isUnknown && car.fleetNumber === "---" ? (
-                                      <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-full mb-1">
-                                          <CarFront className="w-6 h-6 text-slate-400" />
-                                      </div>
-                                  ) : (
-                                      <span className="text-2xl font-black text-slate-800 dark:text-white leading-tight">{car.fleetNumber}</span>
-                                  )}
-                                  <span className="text-[10px] text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-2 py-1 rounded-lg flex items-center gap-1 mt-2">
-                                    <Clock className="w-3 h-3" /> {Math.floor((currentTime - (car.chargingTime || car.enqueueTime)) / 60000)}m
-                                  </span>
-                                </>
+                            }
+                          }}
+                          className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all min-h-[140px] ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950' : 'bg-white/50 dark:bg-slate-900/30 border-slate-200/60 dark:border-slate-800/60 border-dashed backdrop-blur-sm'}`}
+                        >
+                          <span className="absolute top-1.5 left-2 text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500">{label}</span>
+                          {car ? (
+                            <>
+                              <div className="absolute top-0 right-0 w-8 h-8 bg-teal-100 dark:bg-teal-500/20 rounded-bl-full flex items-start justify-end pr-1 pt-1 opacity-50"></div>
+                              {(car as any).isUnknown && car.fleetNumber === "---" ? (
+                                  <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-full mb-1">
+                                      <CarFront className="w-6 h-6 text-slate-400" />
+                                  </div>
                               ) : (
-                                <span className="text-[10px] font-bold text-slate-300 dark:text-slate-600 my-1 font-mono tracking-widest uppercase opacity-40">Ready</span>
+                                  <span className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mt-3 mb-1">{car.fleetNumber}</span>
                               )}
-                            </div>
-                          );
-                        })}
+                              <span className="text-[10px] sm:text-xs text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {Math.floor((currentTime - (car.chargingTime || car.enqueueTime)) / 60000)}m
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-2 font-mono tracking-widest opacity-40 uppercase">Ready</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )})
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -1061,8 +1041,8 @@ export default function EVQueueApp() {
 
         {/* BULK START MODAL */}
       {showBulkStartModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowBulkStartModal(false)}>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
             <div className="w-20 h-20 bg-amber-100 dark:bg-amber-500/20 rounded-3xl flex items-center justify-center mb-6 mx-auto">
               <Zap className="w-10 h-10 text-amber-500 animate-pulse" />
             </div>
@@ -1089,8 +1069,8 @@ export default function EVQueueApp() {
 
       {/* QUICK IDENTIFY MODAL */}
       {identifyingCar && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIdentifyingCar(null)}>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
             <div className="w-16 h-16 bg-teal-100 dark:bg-teal-500/20 rounded-2xl flex items-center justify-center mb-6 mx-auto">
               <CarFront className="w-8 h-8 text-teal-500" />
             </div>
@@ -1124,6 +1104,21 @@ export default function EVQueueApp() {
               >
                 {identifyInput.trim() ? <><Check className="w-5 h-5" /> SIMPAN & SELESAI</> : <><X className="w-5 h-5" /> SELESAI (TANPA RIWAYAT)</>}
               </button>
+              
+              {identifyInput.trim() && (
+                <button 
+                  onClick={() => {
+                     const cleanFleet = identifyInput.padStart(3, '0');
+                     setQueue(prev => prev.map(q => q.id === identifyingCar.id ? { ...q, fleetNumber: cleanFleet, isUnknown: false } : q));
+                     setIdentifyingCar(null);
+                     showToast(`Nomor lambung ${cleanFleet} diperbarui`, "success");
+                  }}
+                  className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-black rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Save className="w-5 h-5" /> SIMPAN & LANJUT CAS
+                </button>
+              )}
+
               <button 
                 onClick={() => setIdentifyingCar(null)}
                 className="w-full py-3 text-slate-400 dark:text-slate-500 font-bold hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
@@ -1267,8 +1262,8 @@ export default function EVQueueApp() {
 
       {/* CONFIRMATION DIALOG */}
       {confirmDialog && (
-         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300">
+         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setConfirmDialog(null)}>
+           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
              <h3 className="text-xl font-black text-slate-800 dark:text-emerald-400 mb-2">{confirmDialog.title}</h3>
              <p className="text-slate-600 dark:text-slate-400 font-medium mb-8 leading-relaxed">{confirmDialog.message}</p>
              <div className="flex gap-3">
@@ -1291,8 +1286,8 @@ export default function EVQueueApp() {
 
       {/* QR CODE MODAL & SCANNER */}
       {showQrModal && (
-         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 flex flex-col items-center">
+         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowQrModal(false)}>
+           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 flex flex-col items-center" onClick={e => e.stopPropagation()}>
              
              {/* TOGGLE TABS */}
              {maxNozzles !== null && (
@@ -1333,8 +1328,8 @@ export default function EVQueueApp() {
 
       {/* INCOMING TRANSFER CONFIRMATION */}
       {incomingTransfer && (
-         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIncomingTransfer(null)}>
+           <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
              <div className="w-12 h-12 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center mb-4">
                <QrCode className="w-6 h-6 text-teal-600 dark:text-teal-400" />
              </div>
@@ -1350,18 +1345,17 @@ export default function EVQueueApp() {
              </div>
            </div>
          </div>
-      )}
 
       {/* HELP / TUTORIAL MODAL */}
       {showHelpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 overflow-y-auto max-h-[90vh]">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowHelpModal(false)}>
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md max-h-[85vh] overflow-hidden rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-300 p-8" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2"><Info className="w-6 h-6 text-teal-500" /> Bantuan</h3>
               <button onClick={() => setShowHelpModal(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-slate-700 transition-colors"><X className="w-5 h-5" /></button>
             </div>
             
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
               <div className="flex gap-4">
                 <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center shrink-0"><Zap className="w-5 h-5 text-teal-600 dark:text-teal-400" /></div>
                 <div>
@@ -1397,7 +1391,7 @@ export default function EVQueueApp() {
             
             <button 
               onClick={() => setShowHelpModal(false)}
-              className="w-full mt-8 py-4 rounded-xl font-bold bg-teal-500 text-white hover:bg-teal-400 transition-colors shadow-lg shadow-teal-500/20"
+              className="w-full mt-8 py-4 rounded-xl font-bold bg-teal-500 text-white hover:bg-teal-400 transition-colors shadow-lg shadow-teal-500/20 active:scale-[0.98]"
             >
               Saya Mengerti
             </button>
