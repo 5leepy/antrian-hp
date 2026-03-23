@@ -98,6 +98,8 @@ export default function EVQueueApp() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showMainMenu, setShowMainMenu] = useState(false);
   const [showBulkStartModal, setShowBulkStartModal] = useState(false);
+  const [identifyingCar, setIdentifyingCar] = useState<QueueItem | null>(null);
+  const [identifyInput, setIdentifyInput] = useState("");
 
   // Bulk Start Handler
   const handleBulkStart = () => {
@@ -468,7 +470,7 @@ export default function EVQueueApp() {
       return;
     }
 
-    setQueue(prev => prev.map(q => q.id === id ? { ...q, fleetNumber: cleanFleet } : q));
+    setQueue(prev => prev.map(q => q.id === id ? { ...q, fleetNumber: cleanFleet, isUnknown: false } : q));
     setEditingItem(null);
     showToast("Nomor lambung diperbarui", "success");
   };
@@ -718,15 +720,20 @@ export default function EVQueueApp() {
                               key={n} 
                               onClick={() => { 
                                 if(car) {
-                                    setConfirmDialog({
-                                      isOpen: true,
-                                      title: "Selesai Pengecasan?",
-                                      message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
-                                      onConfirm: () => {
-                                        executeAction(car, "completed");
-                                        setConfirmDialog(null);
-                                      }
-                                    });
+                                    if ((car as any).isUnknown && car.fleetNumber === "---") {
+                                        setIdentifyingCar(car);
+                                        setIdentifyInput("");
+                                    } else {
+                                        setConfirmDialog({
+                                          isOpen: true,
+                                          title: "Selesai Pengecasan?",
+                                          message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
+                                          onConfirm: () => {
+                                            executeAction(car, "completed");
+                                            setConfirmDialog(null);
+                                          }
+                                        });
+                                    }
                                 }
                               }}
                               className={`rounded-2xl p-3 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950' : 'bg-white/50 dark:bg-slate-900/30 border-slate-200/60 dark:border-slate-800/60 border-dashed backdrop-blur-sm'}`}
