@@ -98,37 +98,6 @@ export default function EVQueueApp() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showMainMenu, setShowMainMenu] = useState(false);
 
-  // Quick Start Handler
-  const handleQuickStart = (nozzleId: number) => {
-    let carName = "";
-    if (queue.length > 0) {
-      // Take from queue if available
-      const topCar = queue[0];
-      // Dispatch logic
-      const updatedItem = { ...topCar, status: "charging" as const, chargingTime: Date.now(), assignedNozzle: nozzleId };
-      setQueue((prev) => prev.filter((q) => q.id !== topCar.id).concat(updatedItem));
-      showToast(`Taksi ${topCar.fleetNumber} (Antrian #1) mulai charging di Nozzle ${nozzleLabel(nozzleId, maxNozzles)}`, "success");
-      return;
-    } else {
-      // Use placeholder if queue is empty
-      const existingPlaceholders = queue.filter(q => q.status === "charging" && q.fleetNumber.startsWith("M-")).length;
-      carName = `M-${existingPlaceholders + 1}`;
-    }
-
-    const newItem: QueueItem = {
-      id: crypto.randomUUID(),
-      fleetNumber: carName,
-      enqueueTime: Date.now(),
-      chargingTime: Date.now(),
-      assignedNozzle: nozzleId,
-      status: "charging",
-    };
-    
-    setQueue(prev => [...prev, newItem]);
-    setHistory(prev => [newItem, ...prev]);
-    showToast(`Mulai charging (Manual) di Nozzle ${nozzleLabel(nozzleId, maxNozzles)}`, "info");
-  };
-
   // Edit State
   const [editingItem, setEditingItem] = useState<{ id: string; fleetNumber: string } | null>(null);
   const [selectedDispenser, setSelectedDispenser] = useState<number | null>(null);
@@ -749,16 +718,7 @@ export default function EVQueueApp() {
                                   </span>
                                 </>
                               ) : (
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleQuickStart(n);
-                                  }}
-                                  className="my-1 p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-sm transition-all active:scale-90 group/btn flex items-center gap-1"
-                                >
-                                  <Zap className="w-3 h-3 fill-white" />
-                                  <span className="text-[9px] font-black uppercase tracking-tighter">MULAI</span>
-                                </button>
+                                <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 my-1 font-mono tracking-widest uppercase opacity-40">Ready</span>
                               )}
                             </div>
                           );
@@ -809,16 +769,7 @@ export default function EVQueueApp() {
                               </span>
                             </>
                           ) : (
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleQuickStart(n);
-                              }}
-                              className="mt-2 p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-90 flex items-center gap-2 group"
-                            >
-                              <Zap className="w-4 h-4 fill-emerald-200 group-hover:fill-white transition-colors" />
-                              <span className="text-sm font-black uppercase tracking-wider">MULAI</span>
-                            </button>
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-2 font-mono tracking-widest opacity-40 uppercase">Ready</span>
                           )}
                         </div>
                       </div>
