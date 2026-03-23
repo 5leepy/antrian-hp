@@ -1053,6 +1053,54 @@ export default function EVQueueApp() {
           </div>
         </div>
       )}
+
+      {/* QUICK IDENTIFY MODAL */}
+      {identifyingCar && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 bg-teal-100 dark:bg-teal-500/20 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+              <CarFront className="w-8 h-8 text-teal-500" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-white text-center mb-2">Identifikasi Taksi</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-center text-sm font-medium mb-6">Input nomor lambung untuk menyimpan ke Riwayat, atau langsung selesaikan.</p>
+            
+            <div className="mb-6">
+                <input
+                  type="text"
+                  value={identifyInput}
+                  onChange={(e) => setIdentifyInput(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                  placeholder="No. Lambung (Opsional)"
+                  className="w-full bg-slate-100 dark:bg-slate-800 border-2 border-transparent focus:border-teal-500 rounded-2xl p-4 text-center text-2xl font-black text-slate-800 dark:text-white outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                  autoFocus
+                />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                   if (identifyInput.trim()) {
+                       const cleanFleet = identifyInput.padStart(3, '0');
+                       const updated = { ...identifyingCar, fleetNumber: cleanFleet, isUnknown: false };
+                       executeAction(updated, "completed");
+                   } else {
+                       executeAction(identifyingCar, "completed");
+                   }
+                   setIdentifyingCar(null);
+                }}
+                className="w-full py-4 bg-teal-500 hover:bg-teal-600 text-white font-black rounded-2xl shadow-lg shadow-teal-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                {identifyInput.trim() ? <><Check className="w-5 h-5" /> SIMPAN & SELESAI</> : <><X className="w-5 h-5" /> SELESAI (TANPA RIWAYAT)</>}
+              </button>
+              <button 
+                onClick={() => setIdentifyingCar(null)}
+                className="w-full py-3 text-slate-400 dark:text-slate-500 font-bold hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              >
+                Kembali
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
         {/* HISTORY MODAL */}
         {showHistoryModal && (
           <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-slate-950 flex flex-col animate-in slide-in-from-bottom-full duration-300 sm:duration-500">
