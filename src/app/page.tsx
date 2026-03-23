@@ -377,9 +377,12 @@ export default function EVQueueApp() {
       
       setQueue((prev) => prev.filter((q) => q.id !== item.id));
       
-      // Only add to history if it's NOT an unidentified unknown car
-      if (!(item as any).isUnknown || item.fleetNumber !== "---") {
+      // STRICT: Never add to history if it's an 'Unknown' car
+      if ((item as any).isUnknown || item.fleetNumber === "---") {
+          showToast(`Sesi (Tanpa Riwayat) selesai`, "info");
+      } else {
           setHistory((prev) => [updatedItem, ...prev]);
+          showToast(`Taksi ${item.fleetNumber} selesai & tersimpan di riwayat`, "success");
       }
 
       if (action === "completed") {
@@ -767,49 +770,79 @@ export default function EVQueueApp() {
                     const car = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
                     const label = nozzleLabel(n, maxNozzles);
                     return (
-                      <div key={n} className="flex flex-col gap-2">
-                        {maxNozzles === 2 && n === 1 && (
-                            <div className="flex justify-between items-center px-1 mb-1">
-                                <span className="text-[10px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase">Dispenser 1</span>
-                                <div className="flex gap-1 p-0.5 bg-slate-200/50 dark:bg-slate-700/50 rounded-full">
-                                    <div className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${chargingCars.find(c => c.assignedNozzle === 1) ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
-                                    <div className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${chargingCars.find(c => c.assignedNozzle === 2) ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
-                                </div>
-                            </div>
-                        )}
-                        <div 
-                          key={n} 
-                          onClick={() => { 
-                            if(car) {
-                                setConfirmDialog({
-                                  isOpen: true,
-                                  title: "Selesai Pengecasan?",
-                                  message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
-                                  onConfirm: () => {
-                                    executeAction(car, "completed");
-                                    setConfirmDialog(null);
-                                  }
-                                });
-                            }
-                          }}
-                          className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950' : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 border-dashed opacity-80'}`}
-                        >
-                          <span className="absolute top-1.5 left-2 text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500">{label}</span>
-                          {car ? (
-                            <>
-                              <div className="absolute top-0 right-0 w-8 h-8 bg-teal-100 dark:bg-teal-500/20 rounded-bl-full flex items-start justify-end pr-1 pt-1 opacity-50"></div>
-                              <span className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mt-3 mb-1">{car.fleetNumber}</span>
-                              <span className="text-[10px] sm:text-xs text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> {Math.floor((currentTime - (car.chargingTime || car.enqueueTime)) / 60000)}m
-                              </span>
-                            </>
-                          ) : (
-                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-2 font-mono tracking-widest opacity-40 uppercase">Ready</span>
-                          )}
+                ) : (
+                  // Dispenser Card Layout for 1-2 Nozzles (Synced with 12-Nozzle Design)
+                  Array.from({ length: 1 }, (_, i) => i + 1).map(dispenserNum => {
+                    const nA = 1;
+                    const nB = 2;
+                    const carA = chargingCars.find(c => c.assignedNozzle === nA) || (chargingCars[nA-1] && !chargingCars[nA-1].assignedNozzle ? chargingCars[nA-1] : undefined);
+                    const carB = chargingCars.find(c => c.assignedNozzle === nB) || (chargingCars[nB-1] && !chargingCars[nB-1].assignedNozzle ? chargingCars[nB-1] : undefined);
+                    const isFull = carA && carB;
+
+                    return (
+                    <div key={dispenserNum} className={`bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 flex flex-col gap-3 transition-all duration-500 ${isFull ? 'shadow-[0_0_20px_rgba(20,184,166,0.2)] bg-teal-50/30 dark:bg-teal-900/10 border-teal-200 dark:border-teal-500/20' : 'shadow-sm'}`}>
+                      <div className="flex justify-between items-center px-1">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase">Dispenser 1 (Standar)</span>
+                        </div>
+                        {/* Status LEDs */}
+                        <div className="flex gap-2 p-1.5 bg-slate-200/50 dark:bg-slate-700/50 rounded-full">
+                          <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${carA ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                          <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${carB ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
                         </div>
                       </div>
-                    );
-                  })
+                      <div className="grid grid-cols-2 gap-3">
+                        {[nA, nB].map(n => {
+                          const car = n === nA ? carA : carB;
+                          const label = nozzleLabel(n, maxNozzles);
+                          const side = label.split('-')[1] || (n === 1 ? 'A' : 'B');
+                          
+                          return (
+                            <div 
+                              key={n} 
+                              onClick={() => { 
+                                if(car) {
+                                    if ((car as any).isUnknown && car.fleetNumber === "---") {
+                                        setIdentifyingCar(car);
+                                        setIdentifyInput("");
+                                    } else {
+                                        setConfirmDialog({
+                                          isOpen: true,
+                                          title: "Selesai Pengecasan?",
+                                          message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
+                                          onConfirm: () => {
+                                            executeAction(car, "completed");
+                                            setConfirmDialog(null);
+                                          }
+                                        });
+                                    }
+                                }
+                              }}
+                              className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all min-h-[140px] ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95' : 'bg-white/50 dark:bg-slate-900/30 border-slate-200/60 dark:border-slate-800/60 border-dashed backdrop-blur-sm'}`}
+                            >
+                              <span className="text-xs font-black text-slate-400 dark:text-slate-500 mb-1">{side}</span>
+                              {car ? (
+                                <>
+                                  {(car as any).isUnknown && car.fleetNumber === "---" ? (
+                                      <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-full mb-1">
+                                          <CarFront className="w-6 h-6 text-slate-400" />
+                                      </div>
+                                  ) : (
+                                      <span className="text-2xl font-black text-slate-800 dark:text-white leading-tight">{car.fleetNumber}</span>
+                                  )}
+                                  <span className="text-[10px] text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-2 py-1 rounded-lg flex items-center gap-1 mt-2">
+                                    <Clock className="w-3 h-3" /> {Math.floor((currentTime - (car.chargingTime || car.enqueueTime)) / 60000)}m
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-[10px] font-bold text-slate-300 dark:text-slate-600 my-1 font-mono tracking-widest uppercase opacity-40">Ready</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )})
                 )}
               </div>
             </div>
