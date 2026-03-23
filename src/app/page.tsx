@@ -167,7 +167,7 @@ export default function EVQueueApp() {
     if (total <= 2) return n === 1 ? 'A' : 'B';
     const disp = Math.ceil(n / 2);
     const side = n % 2 === 1 ? 'A' : 'B';
-    return `N${disp}-${side}`;
+    return `${disp}-${side}`;
   };
 
   // Save to localstorage
@@ -669,7 +669,7 @@ export default function EVQueueApp() {
                   Array.from({ length: 6 }, (_, i) => i + 1).map(dispenserNum => (
                     <div key={dispenserNum} className="bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-3xl p-3 flex flex-col gap-2 shadow-sm">
                       <div className="flex justify-between items-center px-1">
-                        <span className="text-[10px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase">Dispenser N{dispenserNum}</span>
+                        <span className="text-[10px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase">Dispenser {dispenserNum}</span>
                         <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700"></div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
@@ -891,8 +891,7 @@ export default function EVQueueApp() {
                             onClick={() => setSelectedDispenser(disp)}
                             className="p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col items-center justify-center transition-all active:scale-95 hover:border-teal-400 dark:hover:border-teal-500/50"
                           >
-                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">Stn</span>
-                            <span className="font-black text-xl text-slate-800 dark:text-white">N{disp}</span>
+                            <span className="font-black text-xl text-slate-800 dark:text-white">Dispenser {disp}</span>
                           </button>
                         ))}
                       </div>
@@ -1192,7 +1191,7 @@ export default function EVQueueApp() {
                 <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0"><QrCode className="w-5 h-5 text-blue-600 dark:text-blue-400" /></div>
                 <div>
                   <h4 className="font-bold text-slate-800 dark:text-slate-200">4. Operan Shift (QR)</h4>
-                  <p className="text-sm text-slate-500">Klik icon barcode di pojok kanan atas untuk memindahkan seluruh daftar antrian ke HP rekan pengganti Anda.</p>
+                  <p className="text-sm text-slate-500">Gunakan icon Barcode di pojok kanan atas untuk memindahkan seluruh daftar antrian ke HP rekan pengganti Anda.</p>
                 </div>
               </div>
             </div>
