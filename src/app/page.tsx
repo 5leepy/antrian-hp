@@ -1115,24 +1115,32 @@ export default function EVQueueApp() {
               <div className="flex gap-4">
                 <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center shrink-0"><Zap className="w-5 h-5 text-teal-600 dark:text-teal-400" /></div>
                 <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-200">Panggil Antrian</h4>
-                  <p className="text-sm text-slate-500">Tekan tombol <strong>"PANGGIL BERIKUTNYA"</strong> untuk memindah taksi terdepan ke mesin cas (nozzle) yang kosong.</p>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-200">1. Panggil Mobil</h4>
+                  <p className="text-sm text-slate-500">Tekan tombol <strong className="text-teal-600 dark:text-teal-400">HIJAU</strong> untuk memasukkan taksi terdepan ke kotak nozzle yang kosong.</p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0"><Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" /></div>
+                <div>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-200">2. Sedang Cas</h4>
+                  <p className="text-sm text-slate-500">Mobil di kotak <strong className="text-amber-600 dark:text-amber-400">KUNING</strong> sedang mengisi daya. Klik kotaknya jika pengisian sudah <strong className="text-teal-600 dark:text-teal-400">Selesai</strong>.</p>
                 </div>
               </div>
               
               <div className="flex gap-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0"><RotateCcw className="w-5 h-5 text-amber-600 dark:text-amber-400" /></div>
+                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0"><RotateCcw className="w-5 h-5 text-slate-600 dark:text-slate-400" /></div>
                 <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-200">Urungkan (Undo)</h4>
-                  <p className="text-sm text-slate-500">Salah klik? Tombol <strong>Undo</strong> muncul di bawah selama 7 detik setelah data diproses.</p>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-200">3. Salah Klik? (Undo)</h4>
+                  <p className="text-sm text-slate-500">Gunakan tombol <strong>Undo</strong> yang muncul di bawah layar (selama 7 detik) untuk membatalkan kesalahan input data.</p>
                 </div>
               </div>
               
               <div className="flex gap-4">
                 <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0"><QrCode className="w-5 h-5 text-blue-600 dark:text-blue-400" /></div>
                 <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-200">Operan Shift (QR)</h4>
-                  <p className="text-sm text-slate-500">Gunakan icon Barcode di kanan atas untuk memindah seluruh antrian ke HP rekan pengganti Anda.</p>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-200">4. Operan Shift (QR)</h4>
+                  <p className="text-sm text-slate-500">Klik icon barcode di pojok kanan atas untuk memindahkan seluruh daftar antrian ke HP rekan pengganti Anda.</p>
                 </div>
               </div>
             </div>
