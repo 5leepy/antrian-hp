@@ -730,37 +730,48 @@ export default function EVQueueApp() {
                   // Simple Grid Layout for 1-2 Nozzles
                   Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
                     const car = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
+                    const label = nozzleLabel(n, maxNozzles);
                     return (
-                      <div 
-                        key={n} 
-                        onClick={() => { 
-                          if(car) {
-                              const label = nozzleLabel(n, maxNozzles);
-                              setConfirmDialog({
-                                isOpen: true,
-                                title: "Selesai Pengecasan?",
-                                message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
-                                onConfirm: () => {
-                                  executeAction(car, "completed");
-                                  setConfirmDialog(null);
-                                }
-                              });
-                          }
-                        }}
-                        className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-sm cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95' : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 border-dashed opacity-80'}`}
-                      >
-                        <span className="absolute top-1.5 left-2 text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500">{nozzleLabel(n, maxNozzles)}</span>
-                        {car ? (
-                          <>
-                            <div className="absolute top-0 right-0 w-8 h-8 bg-teal-100 dark:bg-teal-500/20 rounded-bl-full flex items-start justify-end pr-1 pt-1 opacity-50"></div>
-                            <span className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mt-3 mb-1">{car.fleetNumber}</span>
-                            <span className="text-[10px] sm:text-xs text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
-                              <Clock className="w-3 h-3" /> {Math.floor((currentTime - (car.chargingTime || car.enqueueTime)) / 60000)}m
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-2">KOSONG</span>
+                      <div key={n} className="flex flex-col gap-2">
+                        {maxNozzles === 2 && n === 1 && (
+                            <div className="flex justify-between items-center px-1 mb-1">
+                                <span className="text-[10px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase">Dispenser 1</span>
+                                <div className="flex gap-1 p-0.5 bg-slate-200/50 dark:bg-slate-700/50 rounded-full">
+                                    <div className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${chargingCars.find(c => c.assignedNozzle === 1) ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                                    <div className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${chargingCars.find(c => c.assignedNozzle === 2) ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                                </div>
+                            </div>
                         )}
+                        <div 
+                          key={n} 
+                          onClick={() => { 
+                            if(car) {
+                                setConfirmDialog({
+                                  isOpen: true,
+                                  title: "Selesai Pengecasan?",
+                                  message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
+                                  onConfirm: () => {
+                                    executeAction(car, "completed");
+                                    setConfirmDialog(null);
+                                  }
+                                });
+                            }
+                          }}
+                          className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950' : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 border-dashed opacity-80'}`}
+                        >
+                          <span className="absolute top-1.5 left-2 text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500">{label}</span>
+                          {car ? (
+                            <>
+                              <div className="absolute top-0 right-0 w-8 h-8 bg-teal-100 dark:bg-teal-500/20 rounded-bl-full flex items-start justify-end pr-1 pt-1 opacity-50"></div>
+                              <span className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mt-3 mb-1">{car.fleetNumber}</span>
+                              <span className="text-[10px] sm:text-xs text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {Math.floor((currentTime - (car.chargingTime || car.enqueueTime)) / 60000)}m
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-2 font-mono tracking-widest opacity-40 uppercase">Ready</span>
+                          )}
+                        </div>
                       </div>
                     );
                   })
@@ -898,15 +909,34 @@ export default function EVQueueApp() {
 
                     {maxNozzles === 12 && selectedDispenser === null ? (
                       <div className="grid grid-cols-3 gap-3">
-                        {Array.from({ length: 6 }, (_, i) => i + 1).map(disp => (
+                        {Array.from({ length: 6 }, (_, i) => i + 1).map(disp => {
+                          const nA = disp * 2 - 1;
+                          const nB = disp * 2;
+                          const carA = chargingCars.find(c => c.assignedNozzle === nA);
+                          const carB = chargingCars.find(c => c.assignedNozzle === nB);
+                          const isFull = carA && carB;
+
+                          return (
                           <button
                             key={disp}
                             onClick={() => setSelectedDispenser(disp)}
-                            className="aspect-square rounded-3xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col items-center justify-center transition-all active:scale-90 hover:border-teal-400 dark:hover:border-teal-500/50 shadow-sm"
+                            className={`aspect-square rounded-3xl border-2 flex flex-col items-center justify-center transition-all active:scale-90 shadow-sm relative overflow-hidden group ${isFull ? 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 opacity-60' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500/50'}`}
                           >
-                            <span className="text-3xl font-black text-slate-800 dark:text-white">D{disp}</span>
+                            <span className={`text-3xl font-black transition-colors ${isFull ? 'text-slate-400' : 'text-slate-800 dark:text-white'}`}>D{disp}</span>
+                            
+                            {/* Occupancy Indicators */}
+                            <div className="flex gap-1 mt-2">
+                                <div className={`w-1.5 h-1.5 rounded-full ${carA ? 'bg-amber-400' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
+                                <div className={`w-1.5 h-1.5 rounded-full ${carB ? 'bg-amber-400' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
+                            </div>
+
+                            {isFull && (
+                                <div className="absolute top-2 right-2 rotate-12">
+                                    <span className="bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm">FULL</span>
+                                </div>
+                            )}
                           </button>
-                        ))}
+                        )})}
                       </div>
                     ) : (
                       <div className={`grid gap-3 ${maxNozzles === 12 ? 'grid-cols-2' : maxNozzles === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
