@@ -718,7 +718,16 @@ export default function EVQueueApp() {
                                   </span>
                                 </>
                               ) : (
-                                <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 my-1 font-mono tracking-widest uppercase opacity-40">Ready</span>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleQuickStart(n);
+                                  }}
+                                  className="my-1 p-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-sm transition-all active:scale-90 group/btn flex items-center gap-1"
+                                >
+                                  <Zap className="w-3 h-3 fill-white" />
+                                  <span className="text-[9px] font-black uppercase tracking-tighter">MULAI</span>
+                                </button>
                               )}
                             </div>
                           );
