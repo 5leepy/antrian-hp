@@ -1345,6 +1345,7 @@ export default function EVQueueApp() {
              </div>
            </div>
          </div>
+       )}
 
       {/* HELP / TUTORIAL MODAL */}
       {showHelpModal && (
