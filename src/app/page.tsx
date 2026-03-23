@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import LZString from "lz-string";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Search, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera } from "lucide-react";
+import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera } from "lucide-react";
 
 type QueueItem = {
   id: string;
@@ -94,7 +94,7 @@ export default function EVQueueApp() {
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [toast, setToast] = useState<ToastType | null>(null);
-  const [searchHistory, setSearchHistory] = useState("");
+
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showMainMenu, setShowMainMenu] = useState(false);
 
@@ -491,14 +491,10 @@ export default function EVQueueApp() {
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  let filteredHistory = history;
-  if (searchHistory.trim()) {
-      filteredHistory = history.filter(h => h.fleetNumber.includes(searchHistory.toUpperCase()));
-  } else {
-      filteredHistory = history.filter(h => h.completedTime && h.completedTime >= todayStart.getTime());
-  }
+  const filteredHistory = history.filter(h => h.completedTime && h.completedTime >= todayStart.getTime());
 
   const completedTodayCount = history.filter(h => h.status === 'completed' && h.completedTime && h.completedTime >= todayStart.getTime()).length;
+  const cancelledTodayCount = history.filter(h => h.status === 'cancelled' && h.completedTime && h.completedTime >= todayStart.getTime()).length;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans transition-colors duration-300">
@@ -857,32 +853,32 @@ export default function EVQueueApp() {
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6 pb-24 w-full max-w-md mx-auto bg-slate-50 dark:bg-slate-950">
-              <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl p-5 flex items-center justify-between shadow-lg text-white shrink-0">
-              <div>
-                <p className="text-teal-100 text-sm font-bold mb-1 drop-shadow-sm">Total Selesai Hari Ini</p>
-                <p className="text-4xl font-black drop-shadow-md">{completedTodayCount} <span className="text-lg font-bold">Mobil</span></p>
+              <div className="flex gap-3 shrink-0">
+                <div className="flex-1 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl p-4 flex items-center justify-between shadow-lg text-white">
+                  <div>
+                    <p className="text-teal-100 text-xs font-bold mb-1">Selesai Hari Ini</p>
+                    <p className="text-3xl font-black">{completedTodayCount} <span className="text-sm font-bold">Mobil</span></p>
+                  </div>
+                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center border border-white/30">
+                    <Check className="w-5 h-5 text-white" />
+                  </div>
+                </div>
+                <div className="flex-1 bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-4 flex items-center justify-between shadow-lg text-white">
+                  <div>
+                    <p className="text-rose-100 text-xs font-bold mb-1">Batal Hari Ini</p>
+                    <p className="text-3xl font-black">{cancelledTodayCount} <span className="text-sm font-bold">Mobil</span></p>
+                  </div>
+                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center border border-white/30">
+                    <X className="w-5 h-5 text-white" />
+                  </div>
+                </div>
               </div>
-              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center border border-white/30 backdrop-blur-sm shadow-inner">
-                <Check className="w-7 h-7 text-white" />
-              </div>
-            </div>
 
             <div className="flex flex-col gap-3">
                <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 mb-1">
                 <History className="w-5 h-5 text-slate-500" /> Riwayat
               </h2>
               
-              {/* Search History */}
-              <div className="relative">
-                <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Cari nomor lambung..."
-                  value={searchHistory}
-                  onChange={e => setSearchHistory(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 pl-10 pr-4 py-3 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none text-slate-800 dark:text-slate-100 shadow-sm"
-                />
-              </div>
 
               {filteredHistory.length === 0 ? (
                 <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-800/50 border-dashed rounded-2xl p-8 mt-2 text-center flex flex-col items-center justify-center gap-3">
