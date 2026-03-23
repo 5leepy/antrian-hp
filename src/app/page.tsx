@@ -663,43 +663,95 @@ export default function EVQueueApp() {
                 </span>
               </div>
 
-              <div className={`grid gap-3 ${maxNozzles === 12 ? 'grid-cols-3 sm:grid-cols-4' : maxNozzles === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                {Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
-                  const car = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
-                  return (
-                    <div 
-                      key={n} 
-                      onClick={() => { 
-                        if(car) {
-                            const label = nozzleLabel(n, maxNozzles);
-                            setConfirmDialog({
-                              isOpen: true,
-                              title: "Selesai Pengecasan?",
-                              message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
-                              onConfirm: () => {
-                                executeAction(car, "completed");
-                                setConfirmDialog(null);
-                              }
-                            });
-                        }
-                      }}
-                      className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-sm cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95' : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 border-dashed opacity-80'}`}
-                    >
-                      <span className="absolute top-1.5 left-2 text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500">{nozzleLabel(n, maxNozzles)}</span>
-                      {car ? (
-                        <>
-                          <div className="absolute top-0 right-0 w-8 h-8 bg-teal-100 dark:bg-teal-500/20 rounded-bl-full flex items-start justify-end pr-1 pt-1 opacity-50"></div>
-                          <span className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mt-3 mb-1">{car.fleetNumber}</span>
-                          <span className="text-[10px] sm:text-xs text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> {Math.floor((currentTime - (car.chargingTime || car.enqueueTime)) / 60000)}m
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-2">KOSONG</span>
-                      )}
+              <div className={`grid gap-4 ${maxNozzles === 12 ? 'grid-cols-2 sm:grid-cols-3' : maxNozzles === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                {maxNozzles === 12 ? (
+                  // Grouped Dispenser Layout for 12 Nozzles
+                  Array.from({ length: 6 }, (_, i) => i + 1).map(dispenserNum => (
+                    <div key={dispenserNum} className="bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-3xl p-3 flex flex-col gap-2 shadow-sm">
+                      <div className="flex justify-between items-center px-1">
+                        <span className="text-[10px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase">Dispenser N{dispenserNum}</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[dispenserNum * 2 - 1, dispenserNum * 2].map(n => {
+                          const car = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
+                          const label = nozzleLabel(n, maxNozzles);
+                          const side = label.split('-')[1]; // Get 'A' or 'B'
+                          
+                          return (
+                            <div 
+                              key={n} 
+                              onClick={() => { 
+                                if(car) {
+                                    setConfirmDialog({
+                                      isOpen: true,
+                                      title: "Selesai Pengecasan?",
+                                      message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
+                                      onConfirm: () => {
+                                        executeAction(car, "completed");
+                                        setConfirmDialog(null);
+                                      }
+                                    });
+                                }
+                              }}
+                              className={`rounded-2xl p-3 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95' : 'bg-white/50 dark:bg-slate-900/30 border-slate-200/60 dark:border-slate-800/60 border-dashed backdrop-blur-sm'}`}
+                            >
+                              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-1">{side}</span>
+                              {car ? (
+                                <>
+                                  <span className="text-xl font-black text-slate-800 dark:text-white leading-tight">{car.fleetNumber}</span>
+                                  <span className="text-[8px] text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-1 py-0.5 rounded flex items-center gap-0.5 mt-1">
+                                    <Clock className="w-2.5 h-2.5" /> {Math.floor((currentTime - (car.chargingTime || car.enqueueTime)) / 60000)}m
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-[9px] font-bold text-slate-300 dark:text-slate-600 my-1">READY</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  );
-                })}
+                  ))
+                ) : (
+                  // Simple Grid Layout for 1-2 Nozzles
+                  Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
+                    const car = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
+                    return (
+                      <div 
+                        key={n} 
+                        onClick={() => { 
+                          if(car) {
+                              const label = nozzleLabel(n, maxNozzles);
+                              setConfirmDialog({
+                                isOpen: true,
+                                title: "Selesai Pengecasan?",
+                                message: `Taksi lambung ${car.fleetNumber} (Nozzle ${label}) akan dipindahkan ke Riwayat sebagai Selesai. Apakah Anda yakin?`,
+                                onConfirm: () => {
+                                  executeAction(car, "completed");
+                                  setConfirmDialog(null);
+                                }
+                              });
+                          }
+                        }}
+                        className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-sm cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95' : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 border-dashed opacity-80'}`}
+                      >
+                        <span className="absolute top-1.5 left-2 text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500">{nozzleLabel(n, maxNozzles)}</span>
+                        {car ? (
+                          <>
+                            <div className="absolute top-0 right-0 w-8 h-8 bg-teal-100 dark:bg-teal-500/20 rounded-bl-full flex items-start justify-end pr-1 pt-1 opacity-50"></div>
+                            <span className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mt-3 mb-1">{car.fleetNumber}</span>
+                            <span className="text-[10px] sm:text-xs text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> {Math.floor((currentTime - (car.chargingTime || car.enqueueTime)) / 60000)}m
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-2">KOSONG</span>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 
