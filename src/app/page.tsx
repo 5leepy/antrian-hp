@@ -920,20 +920,31 @@ export default function EVQueueApp() {
                           <button
                             key={disp}
                             onClick={() => setSelectedDispenser(disp)}
-                            className={`aspect-square rounded-3xl border-2 flex flex-col items-center justify-center transition-all active:scale-90 shadow-sm relative overflow-hidden group ${isFull ? 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 opacity-60' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500/50'}`}
+                            className={`aspect-square rounded-3xl border-2 flex flex-col items-center justify-center transition-all active:scale-90 shadow-sm relative overflow-hidden group ${
+                                isFull 
+                                ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-500/30' 
+                                : carA || carB
+                                ? 'bg-white dark:bg-slate-900 border-amber-100 dark:border-amber-500/20'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500/50'
+                            }`}
                           >
-                            <span className={`text-3xl font-black transition-colors ${isFull ? 'text-slate-400' : 'text-slate-800 dark:text-white'}`}>D{disp}</span>
+                            <span className={`text-3xl font-black ${isFull ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-white'}`}>D{disp}</span>
                             
                             {/* Occupancy Indicators */}
-                            <div className="flex gap-1 mt-2">
-                                <div className={`w-1.5 h-1.5 rounded-full ${carA ? 'bg-amber-400' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
-                                <div className={`w-1.5 h-1.5 rounded-full ${carB ? 'bg-amber-400' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
+                            <div className="flex gap-1.5 mt-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-full">
+                                <div className={`w-2 h-2 rounded-full transition-all ${carA ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)]' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
+                                <div className={`w-2 h-2 rounded-full transition-all ${carB ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)]' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
                             </div>
 
                             {isFull && (
-                                <div className="absolute top-2 right-2 rotate-12">
-                                    <span className="bg-rose-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-sm">FULL</span>
+                                <div className="absolute -top-1 -right-1">
+                                    <div className="bg-amber-500 text-white text-[7px] font-black px-2 py-1 rounded-bl-xl shadow-sm tracking-tighter uppercase">BUSY</div>
                                 </div>
+                            )}
+                            
+                            {/* Subtle Inner Glow for active ones */}
+                            {(carA || carB) && (
+                                <div className={`absolute inset-0 pointer-events-none border-4 transition-opacity duration-500 ${isFull ? 'border-amber-400/10 opacity-100' : 'border-amber-400/5 opacity-50'}`}></div>
                             )}
                           </button>
                         )})}
