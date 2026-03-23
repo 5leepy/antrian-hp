@@ -97,6 +97,24 @@ export default function EVQueueApp() {
 
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showMainMenu, setShowMainMenu] = useState(false);
+  const [showBulkStartModal, setShowBulkStartModal] = useState(false);
+
+  // Bulk Start Handler
+  const handleBulkStart = () => {
+    const newCars: QueueItem[] = Array.from({ length: 12 }, (_, i) => ({
+      id: crypto.randomUUID(),
+      fleetNumber: "---", // Special marker for unknown
+      enqueueTime: Date.now(),
+      chargingTime: Date.now(),
+      assignedNozzle: i + 1,
+      status: "charging",
+      isUnknown: true
+    }));
+    
+    setQueue(prev => [...prev, ...newCars]);
+    setShowBulkStartModal(false);
+    showToast("12 Nozzle telah diaktifkan secara otomatis", "success");
+  };
 
   // Edit State
   const [editingItem, setEditingItem] = useState<{ id: string; fleetNumber: string } | null>(null);
@@ -356,7 +374,11 @@ export default function EVQueueApp() {
       const updatedItem = { ...item, status: action, completedTime: Date.now() };
       
       setQueue((prev) => prev.filter((q) => q.id !== item.id));
-      setHistory((prev) => [updatedItem, ...prev]);
+      
+      // Only add to history if it's NOT an unidentified unknown car
+      if (!(item as any).isUnknown || item.fleetNumber !== "---") {
+          setHistory((prev) => [updatedItem, ...prev]);
+      }
 
       if (action === "completed") {
         playBeep();
@@ -523,7 +545,7 @@ export default function EVQueueApp() {
               <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors"><span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">2</span></div>
               <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Stasiun Standar</h3><p className="text-sm text-slate-500">Melayani 2 taksi (Dual Nozzle)</p></div>
             </button>
-            <button onClick={() => setMaxNozzles(12)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
+            <button onClick={() => { setMaxNozzles(12); setShowBulkStartModal(true); }} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
               <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors"><span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">12</span></div>
               <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Pool Besar</h3><p className="text-sm text-slate-500">Kapasitas penuh hingga 12 Nozzle</p></div>
             </button>
@@ -712,7 +734,13 @@ export default function EVQueueApp() {
                               <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-1">{side}</span>
                               {car ? (
                                 <>
-                                  <span className="text-xl font-black text-slate-800 dark:text-white leading-tight">{car.fleetNumber}</span>
+                                  {(car as any).isUnknown && car.fleetNumber === "---" ? (
+                                      <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-full mb-1">
+                                          <CarFront className="w-4 h-4 text-slate-400" />
+                                      </div>
+                                  ) : (
+                                      <span className="text-xl font-black text-slate-800 dark:text-white leading-tight">{car.fleetNumber}</span>
+                                  )}
                                   <span className="text-[8px] text-teal-600 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-500/10 px-1 py-0.5 rounded flex items-center gap-0.5 mt-1">
                                     <Clock className="w-2.5 h-2.5" /> {Math.floor((currentTime - (car.chargingTime || car.enqueueTime)) / 60000)}m
                                   </span>
@@ -991,6 +1019,33 @@ export default function EVQueueApp() {
             )}
           </div>
 
+        {/* BULK START MODAL */}
+      {showBulkStartModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-300">
+            <div className="w-20 h-20 bg-amber-100 dark:bg-amber-500/20 rounded-3xl flex items-center justify-center mb-6 mx-auto">
+              <Zap className="w-10 h-10 text-amber-500 animate-pulse" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-white text-center mb-3">Siapkan Pool Sekarang?</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-center font-medium mb-8 leading-relaxed">Apakah saat ini semua (12) Nozzle sudah terisi mobil? Jika ya, sistem akan mengaktifkan semua timer secara otomatis.</p>
+            
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={handleBulkStart}
+                className="w-full py-4 bg-teal-500 hover:bg-teal-600 text-white font-black rounded-2xl shadow-lg shadow-teal-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Check className="w-5 h-5" /> YA, SEMUA PENUH
+              </button>
+              <button 
+                onClick={() => setShowBulkStartModal(false)}
+                className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+              >
+                TIDAK, MASUK KOSONG
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
         {/* HISTORY MODAL */}
         {showHistoryModal && (
           <div className="fixed inset-0 z-50 bg-slate-50 dark:bg-slate-950 flex flex-col animate-in slide-in-from-bottom-full duration-300 sm:duration-500">
