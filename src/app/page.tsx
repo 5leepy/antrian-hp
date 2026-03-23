@@ -559,13 +559,13 @@ export default function EVQueueApp() {
                   onClick={() => { setShowHelpModal(true); setShowMainMenu(false); }}
                   className="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-100 dark:border-slate-800/50 transition-colors"
                 >
-                  <Info className="w-5 h-5 text-teal-500" /> Tutorial Penggunaan
+                  <Info className="w-5 h-5 text-teal-500" /> Tutorial
                 </button>
                 <button 
                   onClick={() => { setShowHistoryModal(true); setShowMainMenu(false); }}
                   className="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-100 dark:border-slate-800/50 transition-colors"
                 >
-                  <History className="w-5 h-5 text-teal-500" /> Riwayat Hari Ini
+                  <History className="w-5 h-5 text-teal-500" /> Riwayat
                 </button>
                 <button 
                   onClick={() => { toggleTheme(); setShowMainMenu(false); }}
