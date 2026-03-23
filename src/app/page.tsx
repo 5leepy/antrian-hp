@@ -937,8 +937,8 @@ export default function EVQueueApp() {
                             </div>
 
                             {isFull && (
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none mb-10">
-                                    <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-md shadow-lg rotate-[-12deg] ring-2 ring-white dark:ring-slate-900 z-10">FULL</span>
+                                <div className="absolute bottom-2 right-2">
+                                    <span className="bg-rose-500/80 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow-sm uppercase tracking-tighter">FULL</span>
                                 </div>
                             )}
                             
