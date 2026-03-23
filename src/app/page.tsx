@@ -511,13 +511,13 @@ export default function EVQueueApp() {
           <div className="w-20 h-20 bg-teal-500 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-teal-500/40 mb-8">
             <Zap className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-3">AntriCas</h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed">Pilih konfigurasi stasiun / kapasitas Nozzle untuk memulai shift Anda hari ini.</p>
+          <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-3">Selamat Bertugas! 👋</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed">Pilih jumlah nozzle yang aktif di stasiun Anda sekarang untuk memulai.</p>
           
           <div className="flex flex-col gap-4 w-full">
             <button onClick={() => setMaxNozzles(1)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
               <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors"><span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">1</span></div>
-              <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Stasiun Singel</h3><p className="text-sm text-slate-500">Hanya melayani 1 taksi sekaligus</p></div>
+              <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Stasiun Kecil</h3><p className="text-sm text-slate-500">Hanya 1 Dispenser & 1 Nozzle aktif</p></div>
             </button>
             <button onClick={() => setMaxNozzles(2)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
               <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors"><span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">2</span></div>
@@ -525,15 +525,15 @@ export default function EVQueueApp() {
             </button>
             <button onClick={() => setMaxNozzles(12)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
               <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors"><span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">12</span></div>
-              <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Pool Khusus</h3><p className="text-sm text-slate-500">Mampu melayani hingga 12 taksi</p></div>
+              <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Pool Besar</h3><p className="text-sm text-slate-500">Kapasitas penuh hingga 12 Nozzle</p></div>
             </button>
             <div className="my-2 flex items-center gap-4">
                <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
-               <span className="text-xs font-bold text-slate-400">ATAU TERIMA DATA</span>
+               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">ATAU LANJUTKAN DARI HP LAIN</span>
                <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
             </div>
             <button onClick={() => { setQrMode("scan"); setShowQrModal(true); }} className="w-full bg-slate-100 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 p-4 rounded-2xl flex items-center justify-center gap-3 transition-all text-slate-600 dark:text-slate-400 font-bold active:scale-95">
-               <Camera className="w-5 h-5 text-teal-500" /> Scan Kode QR Handoff
+               <Camera className="w-5 h-5 text-teal-500" /> Operan Shift? Scan QR Rekan
             </button>
           </div>
         </div>
