@@ -663,7 +663,7 @@ export default function EVQueueApp() {
                 </span>
               </div>
 
-              <div className={`grid gap-4 ${maxNozzles === 12 ? 'grid-cols-2 sm:grid-cols-3' : maxNozzles === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              <div className={`grid gap-4 ${maxNozzles === 12 ? 'grid-cols-2' : maxNozzles === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 {maxNozzles === 12 ? (
                   // Grouped Dispenser Layout for 12 Nozzles
                   Array.from({ length: 6 }, (_, i) => i + 1).map(dispenserNum => (
