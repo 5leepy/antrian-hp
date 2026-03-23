@@ -889,9 +889,9 @@ export default function EVQueueApp() {
                           <button
                             key={disp}
                             onClick={() => setSelectedDispenser(disp)}
-                            className="p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col items-center justify-center transition-all active:scale-95 hover:border-teal-400 dark:hover:border-teal-500/50"
+                            className="aspect-square rounded-3xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col items-center justify-center transition-all active:scale-90 hover:border-teal-400 dark:hover:border-teal-500/50 shadow-sm"
                           >
-                            <span className="font-black text-xl text-slate-800 dark:text-white">Dispenser {disp}</span>
+                            <span className="text-3xl font-black text-slate-800 dark:text-white">D{disp}</span>
                           </button>
                         ))}
                       </div>
