@@ -102,7 +102,7 @@ export default function EVQueueApp() {
   const [editingItem, setEditingItem] = useState<{ id: string; fleetNumber: string } | null>(null);
 
   // Undo State
-  const [undoItem, setUndoItem] = useState<{ item: QueueItem; timeoutId: NodeJS.Timeout; prevStatus: QueueItem['status'] } | null>(null);
+  const [undoItem, setUndoItem] = useState<{ item: QueueItem; timeoutId: NodeJS.Timeout; prevStatus: QueueItem['status']; replacedCar?: QueueItem } | null>(null);
 
   // Dialog State
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
@@ -386,19 +386,40 @@ export default function EVQueueApp() {
   const handleUndo = () => {
     if (!undoItem) return;
     clearTimeout(undoItem.timeoutId);
-    
-    // Remove from history
-    setHistory(prev => prev.filter(h => h.id !== undoItem.item.id));
-    
-    // Add back to queue
-    const restoredItem = { 
-      ...undoItem.item, 
-      status: undoItem.prevStatus 
-    };
-    delete restoredItem.completedTime;
-    
-    setQueue(prev => [...prev, restoredItem]);
-    showToast(`Undo berhasil: Taksi ${restoredItem.fleetNumber} kembali ke antrian`, "success");
+
+    // Check if this is a dispatch-undo (car is still in queue, status changed to charging)
+    // vs a completed/cancelled undo (car was moved out of queue to history)
+    const isDispatchUndo = undoItem.prevStatus === "waiting" && undoItem.item.status === "charging";
+
+    if (isDispatchUndo) {
+      // Revert the dispatched car from charging back to waiting in the queue
+      setQueue(prev => prev.map(q => {
+        if (q.id !== undoItem.item.id) return q;
+        const reverted = { ...q, status: "waiting" as const };
+        delete reverted.chargingTime;
+        delete reverted.assignedNozzle;
+        return reverted;
+      }));
+
+      // If there was a replaced car (nozzle swap), restore it from history back to charging
+      if (undoItem.replacedCar) {
+        const carToRestore = { ...undoItem.replacedCar, status: "charging" as const };
+        delete carToRestore.completedTime;
+        setHistory(prev => prev.filter(h => h.id !== carToRestore.id));
+        setQueue(prev => [...prev, carToRestore]);
+      }
+    } else {
+      // Remove from history and add back to queue (completed/cancelled undo)
+      setHistory(prev => prev.filter(h => h.id !== undoItem.item.id));
+      const restoredItem = { 
+        ...undoItem.item, 
+        status: undoItem.prevStatus 
+      };
+      delete restoredItem.completedTime;
+      setQueue(prev => [...prev, restoredItem]);
+    }
+
+    showToast(`Undo berhasil: Taksi ${undoItem.item.fleetNumber} kembali ke antrian`, "success");
     setUndoItem(null);
   };
 
@@ -570,7 +591,7 @@ export default function EVQueueApp() {
                   placeholder="Ketik No. Lambung..."
                   maxLength={3}
                   pattern="[0-9]*"
-                  className="w-full bg-transparent border-none py-3 text-2xl font-black text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-700 focus:outline-none focus:ring-0 tracking-widest uppercase"
+                  className="w-full bg-transparent border-none py-3 text-2xl font-black text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-700 placeholder:text-sm placeholder:font-medium focus:outline-none focus:ring-0 tracking-widest uppercase"
                   autoComplete="off"
                   inputMode="numeric"
                 />
@@ -764,13 +785,30 @@ export default function EVQueueApp() {
                           <button 
                             key={n} 
                             onClick={() => {
-                              // Execute Dispatch inside the component context using executeAction logic
                               const nextCar = waitingCars[0];
+                              const now = Date.now();
+
+                              // If a car is already occupying this nozzle, move it to history directly
+                              // without creating an undo entry (it's an intentional override by the operator)
                               if (occupied) {
-                                executeAction(occupied, "completed");
+                                const completedOccupied = { ...occupied, status: "completed" as const, completedTime: now };
+                                setQueue(prev => prev.filter(q => q.id !== occupied.id));
+                                setHistory(prev => [completedOccupied, ...prev]);
+                                playBeep();
                               }
-                              // Then move nextCar to charging
-                              setQueue(prev => prev.map(q => q.id === nextCar.id ? { ...q, status: "charging", chargingTime: Date.now(), assignedNozzle: n } : q));
+
+                              // Move nextCar from waiting -> charging
+                              const dispatchedCar = { ...nextCar, status: "charging" as const, chargingTime: now, assignedNozzle: n };
+                              setQueue(prev => prev.map(q => q.id === nextCar.id ? dispatchedCar : q));
+
+                              // Set undo so the operator can revert the dispatch:
+                              // - puts nextCar back to waiting
+                              // - if a car was replaced, puts it back to charging
+                              if (undoItem) clearTimeout(undoItem.timeoutId);
+                              const timeoutId = setTimeout(() => setUndoItem(null), 7000);
+                              setUndoItem({ item: dispatchedCar, timeoutId, prevStatus: "waiting", replacedCar: occupied ? { ...occupied } : undefined });
+
+                              showToast(`Taksi ${nextCar.fleetNumber} dipanggil ke Nozzle ${n}`, "info");
                               setShowDispatchModal(false);
                             }}
                             className={`p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all active:scale-95 ${occupied ? 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-500/50'}`}
@@ -908,7 +946,7 @@ export default function EVQueueApp() {
       {undoItem && (
         <div className="fixed bottom-6 left-4 right-4 z-40 bg-slate-900 text-white p-4 rounded-xl shadow-2xl flex items-center justify-between border border-slate-700 animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300">
           <div className="flex-1">
-            <p className="font-bold text-sm">Taksi {undoItem.item.fleetNumber} {undoItem.item.status === 'completed' ? 'diselesaikan' : 'dibatalkan'}.</p>
+            <p className="font-bold text-sm">Taksi {undoItem.item.fleetNumber} {undoItem.item.status === 'completed' ? 'diselesaikan' : undoItem.item.status === 'charging' ? 'dipanggil ke nozzle' : 'dibatalkan'}.</p>
           </div>
           <button onClick={handleUndo} className="bg-slate-700 hover:bg-slate-600 text-teal-400 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors border border-slate-600">
             <RotateCcw className="w-4 h-4" /> Undo
