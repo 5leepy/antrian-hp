@@ -102,7 +102,7 @@ export default function EVQueueApp() {
   const [editingItem, setEditingItem] = useState<{ id: string; fleetNumber: string } | null>(null);
 
   // Undo State
-  const [undoItem, setUndoItem] = useState<{ item: QueueItem; timeoutId: NodeJS.Timeout; prevStatus: QueueItem['status']; replacedCar?: QueueItem } | null>(null);
+  const [undoItem, setUndoItem] = useState<{ item: QueueItem; timeoutId: NodeJS.Timeout; prevStatus: QueueItem['status']; replacedCar?: QueueItem; startTime: number } | null>(null);
 
   // Dialog State
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
@@ -360,7 +360,7 @@ export default function EVQueueApp() {
       // Set Undo 
       if (undoItem) clearTimeout(undoItem.timeoutId);
       const timeoutId = setTimeout(() => setUndoItem(null), 7000); // 7 seconds undo window
-      setUndoItem({ item: updatedItem, timeoutId, prevStatus: originalStatus as "charging" | "waiting" });
+      setUndoItem({ item: updatedItem, timeoutId, prevStatus: originalStatus as "charging" | "waiting", startTime: Date.now() });
     }
   };
 
@@ -443,6 +443,23 @@ export default function EVQueueApp() {
     setQueue(prev => prev.map(q => q.id === id ? { ...q, fleetNumber: cleanFleet } : q));
     setEditingItem(null);
     showToast("Nomor lambung diperbarui", "success");
+  };
+
+  // Shared dispatch logic (used by modal AND auto-dispatch)
+  const dispatchToNozzle = (nozzleNum: number, nextCar: QueueItem, occupied?: QueueItem) => {
+    const now = Date.now();
+    if (occupied) {
+      const completedOccupied = { ...occupied, status: "completed" as const, completedTime: now };
+      setQueue(prev => prev.filter(q => q.id !== occupied.id));
+      setHistory(prev => [completedOccupied, ...prev]);
+      playBeep();
+    }
+    const dispatchedCar = { ...nextCar, status: "charging" as const, chargingTime: now, assignedNozzle: nozzleNum };
+    setQueue(prev => prev.map(q => q.id === nextCar.id ? dispatchedCar : q));
+    if (undoItem) clearTimeout(undoItem.timeoutId);
+    const timeoutId = setTimeout(() => setUndoItem(null), 7000);
+    setUndoItem({ item: dispatchedCar, timeoutId, prevStatus: "waiting", replacedCar: occupied ? { ...occupied } : undefined, startTime: now });
+    showToast(`Taksi ${nextCar.fleetNumber} dipanggil ke Nozzle ${nozzleNum}`, "info");
   };
 
   const handleSkip = (item: QueueItem, index: number) => {
@@ -611,7 +628,18 @@ export default function EVQueueApp() {
             {/* MASTER CALL BUTTON */}
             {waitingCars.length > 0 && (
               <button 
-                onClick={() => setShowDispatchModal(true)}
+                onClick={() => {
+                  const nozzleCount = maxNozzles || 2;
+                  const freeNozzles = Array.from({ length: nozzleCount }, (_, i) => i + 1).filter(n => {
+                    return !chargingCars.find(c => c.assignedNozzle === n) && !(chargingCars[n-1] && !chargingCars[n-1].assignedNozzle);
+                  });
+                  // Auto-dispatch if exactly one nozzle is free (no choice needed)
+                  if (freeNozzles.length === 1) {
+                    dispatchToNozzle(freeNozzles[0], waitingCars[0]);
+                  } else {
+                    setShowDispatchModal(true);
+                  }
+                }}
                 className="w-full mt-2 py-5 rounded-3xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-black text-xl shadow-lg shadow-teal-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 relative overflow-hidden group border-b-4 border-emerald-600/50"
               >
                 <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
@@ -749,7 +777,7 @@ export default function EVQueueApp() {
                         <button onClick={() => handleSkip(item, index)} disabled={index >= waitingCars.length - 1} className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:active:scale-100 py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-sm">
                           <SkipForward className="w-5 h-5" /> Lewati
                         </button>
-                        <button onClick={() => executeAction(item, "cancelled")} className="flex-1 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-sm">
+                        <button onClick={() => handleAction(item, "cancelled")} className="flex-1 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 py-3 rounded-xl font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-sm">
                           <X className="w-5 h-5" /> Batal
                         </button>
                       </div>
@@ -781,34 +809,12 @@ export default function EVQueueApp() {
                     <div className={`grid gap-3 ${maxNozzles === 12 ? 'grid-cols-3 sm:grid-cols-4' : maxNozzles === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                       {Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
                         const occupied = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
+                        const chargingMins = occupied ? Math.floor((currentTime - (occupied.chargingTime || occupied.enqueueTime)) / 60000) : 0;
                         return (
                           <button 
                             key={n} 
                             onClick={() => {
-                              const nextCar = waitingCars[0];
-                              const now = Date.now();
-
-                              // If a car is already occupying this nozzle, move it to history directly
-                              // without creating an undo entry (it's an intentional override by the operator)
-                              if (occupied) {
-                                const completedOccupied = { ...occupied, status: "completed" as const, completedTime: now };
-                                setQueue(prev => prev.filter(q => q.id !== occupied.id));
-                                setHistory(prev => [completedOccupied, ...prev]);
-                                playBeep();
-                              }
-
-                              // Move nextCar from waiting -> charging
-                              const dispatchedCar = { ...nextCar, status: "charging" as const, chargingTime: now, assignedNozzle: n };
-                              setQueue(prev => prev.map(q => q.id === nextCar.id ? dispatchedCar : q));
-
-                              // Set undo so the operator can revert the dispatch:
-                              // - puts nextCar back to waiting
-                              // - if a car was replaced, puts it back to charging
-                              if (undoItem) clearTimeout(undoItem.timeoutId);
-                              const timeoutId = setTimeout(() => setUndoItem(null), 7000);
-                              setUndoItem({ item: dispatchedCar, timeoutId, prevStatus: "waiting", replacedCar: occupied ? { ...occupied } : undefined });
-
-                              showToast(`Taksi ${nextCar.fleetNumber} dipanggil ke Nozzle ${n}`, "info");
+                              dispatchToNozzle(n, waitingCars[0], occupied);
                               setShowDispatchModal(false);
                             }}
                             className={`p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all active:scale-95 ${occupied ? 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-500/50'}`}
@@ -817,6 +823,9 @@ export default function EVQueueApp() {
                             {occupied ? (
                               <>
                                 <span className="font-black text-xl text-slate-800 dark:text-white">{occupied.fleetNumber}</span>
+                                <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-0.5 mt-0.5">
+                                  <Clock className="w-2.5 h-2.5" />{chargingMins}m
+                                </span>
                                 <span className="text-[9px] bg-amber-500 text-white px-1.5 py-0.5 rounded mt-1 font-bold tracking-widest shadow-sm">GANTI</span>
                               </>
                             ) : (
@@ -944,13 +953,21 @@ export default function EVQueueApp() {
 
       {/* UNDO SNACKBAR */}
       {undoItem && (
-        <div className="fixed bottom-6 left-4 right-4 z-40 bg-slate-900 text-white p-4 rounded-xl shadow-2xl flex items-center justify-between border border-slate-700 animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300">
-          <div className="flex-1">
-            <p className="font-bold text-sm">Taksi {undoItem.item.fleetNumber} {undoItem.item.status === 'completed' ? 'diselesaikan' : undoItem.item.status === 'charging' ? 'dipanggil ke nozzle' : 'dibatalkan'}.</p>
+        <div className="fixed bottom-6 left-4 right-4 z-40 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300 overflow-hidden">
+          <style>{`@keyframes undo-shrink { from { width: 100%; } to { width: 0%; } }`}</style>
+          {/* Progress bar */}
+          <div
+            className="h-1 bg-teal-500 rounded-t-xl"
+            style={{ animation: `undo-shrink 7s linear forwards`, animationDelay: '0ms' }}
+          />
+          <div className="flex items-center justify-between p-4">
+            <div className="flex-1">
+              <p className="font-bold text-sm">Taksi {undoItem.item.fleetNumber} {undoItem.item.status === 'completed' ? 'diselesaikan' : undoItem.item.status === 'charging' ? 'dipanggil ke nozzle' : 'dibatalkan'}.</p>
+            </div>
+            <button onClick={handleUndo} className="bg-slate-700 hover:bg-slate-600 text-teal-400 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors border border-slate-600">
+              <RotateCcw className="w-4 h-4" /> Undo
+            </button>
           </div>
-          <button onClick={handleUndo} className="bg-slate-700 hover:bg-slate-600 text-teal-400 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors border border-slate-600">
-            <RotateCcw className="w-4 h-4" /> Undo
-          </button>
         </div>
       )}
 
