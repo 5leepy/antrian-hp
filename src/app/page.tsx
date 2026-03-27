@@ -263,7 +263,7 @@ export default function EVQueueApp() {
         (position) => {
           const { latitude, longitude } = position.coords;
           let closestHub = null;
-          let minDistance = 0.5; // Radius 500m
+          let minDistance = 0.2; // Radius 200m (More precise)
 
           for (const hub of KNOWN_HUBS) {
             const dist = getDistance(latitude, longitude, hub.lat, hub.lng);
