@@ -107,6 +107,7 @@ export default function EVQueueApp() {
 
   // Long-press handlers for nozzle disable/enable
   const handleNozzleLongPressStart = (nozzleNum: number, isDisabled: boolean, car: QueueItem | undefined) => {
+    if (maxNozzles === 1) return; // Feature disabled for single nozzle configuration
     longPressTimerRef.current = setTimeout(() => {
       const label = nozzleLabel(nozzleNum, maxNozzles);
       if (isDisabled) {
