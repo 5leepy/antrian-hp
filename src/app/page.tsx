@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import LZString from "lz-string";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera, Save, AlertTriangle } from "lucide-react";
+import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera, Save, AlertTriangle, ListOrdered, Plus, HelpCircle } from "lucide-react";
 
 type QueueItem = {
   id: string;
@@ -95,9 +95,10 @@ export default function EVQueueApp() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [toast, setToast] = useState<ToastType | null>(null);
 
-  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showQueueModal, setShowQueueModal] = useState(false);
   const [showMainMenu, setShowMainMenu] = useState(false);
   const [showBulkStartModal, setShowBulkStartModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [identifyingCar, setIdentifyingCar] = useState<QueueItem | null>(null);
   const [identifyInput, setIdentifyInput] = useState("");
 
@@ -183,7 +184,7 @@ export default function EVQueueApp() {
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrMode, setQrMode] = useState<"show" | "scan">("show");
   const [transferUrl, setTransferUrl] = useState("");
-  const [incomingTransfer, setIncomingTransfer] = useState<{ queue: QueueItem[], maxNozzles: number | null } | null>(null);
+  const [incomingTransfer, setIncomingTransfer] = useState<{ queue: QueueItem[], maxNozzles: number | null, disabledNozzles?: number[] } | null>(null);
 
   // Sound Synth Ref (to avoid multiple instances)
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -267,7 +268,7 @@ export default function EVQueueApp() {
         if (decoded) {
           const parsed = JSON.parse(decoded);
           if (Array.isArray(parsed)) {
-            setIncomingTransfer({ queue: parsed, maxNozzles: null });
+             setIncomingTransfer({ queue: parsed, maxNozzles: null, disabledNozzles: [] });
           } else if (parsed && parsed.q) {
             setIncomingTransfer({ queue: parsed.q, maxNozzles: parsed.m || null, disabledNozzles: parsed.d || [] });
           }
@@ -724,6 +725,26 @@ export default function EVQueueApp() {
             </form>
 
             <div className="w-full h-px bg-slate-200 dark:bg-slate-800/50 my-1"></div>
+
+            {/* CLICKABLE SUMMARY BAR */}
+            {waitingCars.length > 0 && (
+              <button 
+                onClick={() => setShowQueueModal(true)}
+                className="w-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/30 rounded-2xl p-3 flex items-center justify-between hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-all active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-2">
+                   <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center text-sm font-black shadow-sm">
+                      {waitingCars.length}
+                   </div>
+                   <span className="text-sm font-bold text-amber-700 dark:text-amber-400">Taksi Antri</span>
+                </div>
+                <div className="flex items-center gap-2">
+                   <span className="text-[10px] font-bold text-amber-600/70 dark:text-amber-500/50 uppercase tracking-widest">Terakhir:</span>
+                   <span className="text-sm font-black text-amber-700 dark:text-amber-300">#{waitingCars[waitingCars.length - 1].fleetNumber}</span>
+                   <ChevronRight className="w-4 h-4 text-amber-400" />
+                </div>
+              </button>
+            )}
 
             {/* MASTER CALL BUTTON */}
             {waitingCars.length > 0 && (
@@ -1473,54 +1494,144 @@ export default function EVQueueApp() {
          </div>
        )}
 
-      {/* HELP / TUTORIAL MODAL */}
+       {/* QUICK VIEW QUEUE MODAL */}
+       {showQueueModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowQueueModal(false)}>
+            <div className="bg-white dark:bg-slate-900 w-full max-w-md max-h-[80vh] rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-300 overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                <div>
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                    <ListOrdered className="w-6 h-6 text-amber-500" /> Daftar Urutan
+                  </h3>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5">{waitingCars.length} Mobil Menunggu</p>
+                </div>
+                <button onClick={() => setShowQueueModal(false)} className="p-2 bg-white dark:bg-slate-800 shadow-sm rounded-full text-slate-500 hover:text-rose-500 transition-colors border border-slate-200 dark:border-slate-700 leading-none">
+                   <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div className="grid grid-cols-3 gap-3">
+                  {waitingCars.map((item, index) => (
+                    <div key={item.id} className="relative bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 flex flex-col items-center justify-center group transform transition-all active:scale-95">
+                      <span className="absolute top-1.5 left-2 text-[9px] font-black text-slate-400 dark:text-slate-500">#{index + 1}</span>
+                      <span className="text-xl font-black text-slate-800 dark:text-teal-400 mt-1">{item.fleetNumber}</span>
+                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">{format(item.enqueueTime, "HH:mm")}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-3">
+                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter text-center">Tunjukkan layar ini ke driver jika mereka menanyakan posisi urutan.</p>
+                <button onClick={() => setShowQueueModal(false)} className="w-full py-4 rounded-2xl font-black bg-slate-800 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-700 dark:hover:bg-slate-100 transition-all shadow-xl active:scale-[0.98]">
+                  TUTUP
+                </button>
+              </div>
+            </div>
+          </div>
+       )}
+
+      {/* HELP / TUTORIAL MODAL (REVAMPED) */}
       {showHelpModal && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setShowHelpModal(false)}>
           <div className="bg-white dark:bg-slate-900 w-full max-w-md max-h-[85vh] overflow-hidden rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col animate-in zoom-in-95 duration-300 p-8" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2"><Info className="w-6 h-6 text-teal-500" /> Bantuan</h3>
-              <button onClick={() => setShowHelpModal(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-slate-700 transition-colors"><X className="w-5 h-5" /></button>
+              <h3 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <Info className="w-6 h-6 text-teal-500" /> Bantuan Operasional
+              </h3>
+              <button onClick={() => setShowHelpModal(false)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:text-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500/50">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             
             <div className="flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
-              <div className="flex gap-4">
-                <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center shrink-0"><Zap className="w-5 h-5 text-teal-600 dark:text-teal-400" /></div>
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-200">1. Panggil Mobil</h4>
-                  <p className="text-sm text-slate-500">Tekan tombol <strong className="text-teal-600 dark:text-teal-400">HIJAU</strong> untuk memasukkan taksi terdepan ke kotak nozzle yang kosong.</p>
+              {/* SECTION: ALUR UTAMA */}
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">1. Alur Utama (Main Flow)</h4>
+                
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+                  <div className="flex gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center shrink-0 border border-slate-100 dark:border-slate-700">
+                      <Plus className="w-5 h-5 text-teal-500" />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-sm text-slate-800 dark:text-slate-200">Input No. Lambung</h5>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Ketik nomor taksi di atas untuk memasukkannya ke antrian.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-teal-500 shadow-md flex items-center justify-center shrink-0">
+                      <Zap className="w-5 h-5 text-white fill-white" />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-sm text-slate-800 dark:text-slate-200">Panggil Berikutnya</h5>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Klik tombol besar PETIR untuk memanggil taksi terdepan ke pengisian.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-amber-400 shadow-md flex items-center justify-center shrink-0">
+                      <Clock className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-sm text-slate-800 dark:text-slate-200">Selesai Cas</h5>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Klik pada kotak nozzle kuning jika pengisian mobil tersebut sudah selesai.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex gap-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0"><Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" /></div>
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-200">2. Sedang Cas</h4>
-                  <p className="text-sm text-slate-500">Mobil di kotak <strong className="text-amber-600 dark:text-amber-400">KUNING</strong> sedang mengisi daya. Klik kotaknya jika pengisian sudah <strong className="text-teal-600 dark:text-teal-400">Selesai</strong>.</p>
+              {/* SECTION: KONDISI KHUSUS */}
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">2. Kondisi Khusus</h4>
+                
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 flex gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center shrink-0 border border-slate-100 dark:border-slate-700">
+                      <HelpCircle className="w-5 h-5 text-slate-400" />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-sm text-slate-800 dark:text-slate-200">Identifikasi "---"</h5>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Jika ada mobil tidak teridentifikasi, klik kotaknya untuk mengisi nomor lambung.</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-rose-50 dark:bg-rose-500/5 p-4 rounded-2xl border border-rose-100 dark:border-rose-500/10 flex gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500 shadow-md flex items-center justify-center shrink-0 text-white">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h5 className="font-bold text-sm text-rose-700 dark:text-rose-400">Nozzle OFF (Trouble)</h5>
+                      <p className="text-xs text-rose-600/70 dark:text-rose-400/60">Tekan LAMA pada kotak nozzle untuk mematikan/menyalakan (jika rusak/maintenance).</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              
-              <div className="flex gap-4">
-                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0"><RotateCcw className="w-5 h-5 text-slate-600 dark:text-slate-400" /></div>
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-200">3. Salah Klik? (Undo)</h4>
-                  <p className="text-sm text-slate-500">Gunakan tombol <strong>Undo</strong> yang muncul di bawah layar (selama 7 detik) untuk membatalkan kesalahan input data.</p>
-                </div>
-              </div>
-              
-              <div className="flex gap-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0"><QrCode className="w-5 h-5 text-blue-600 dark:text-blue-400" /></div>
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-200">4. Operan Shift (QR)</h4>
-                  <p className="text-sm text-slate-500">Gunakan icon Barcode di pojok kanan atas untuk memindahkan seluruh daftar antrian ke HP rekan pengganti Anda.</p>
+
+              {/* SECTION: FITUR LAIN */}
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">3. Fitur Pendukung</h4>
+                
+                <div className="flex flex-col gap-3">
+                   <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl">
+                      <RotateCcw className="w-4 h-4 text-slate-500" />
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Gunakan tombol <strong>Undo</strong> yang muncul jika salah klik.</p>
+                   </div>
+                   <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl">
+                      <QrCode className="w-4 h-4 text-teal-500" />
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Scan QR untuk operan shift daftar antrian ke HP rekan.</p>
+                   </div>
                 </div>
               </div>
             </div>
             
             <button 
               onClick={() => setShowHelpModal(false)}
-              className="w-full mt-8 py-4 rounded-xl font-bold bg-teal-500 text-white hover:bg-teal-400 transition-colors shadow-lg shadow-teal-500/20 active:scale-[0.98]"
+              className="w-full mt-8 py-4 rounded-2xl font-black bg-teal-500 text-white hover:bg-teal-400 transition-all shadow-lg shadow-teal-500/20 active:scale-[0.98]"
             >
-              Saya Mengerti
+              SAYA MENGERTI
             </button>
           </div>
         </div>
