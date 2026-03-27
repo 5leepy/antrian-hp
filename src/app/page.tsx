@@ -251,7 +251,10 @@ export default function EVQueueApp() {
     if (isLoaded) {
       localStorage.setItem("ev_queue", JSON.stringify(queue));
       localStorage.setItem("ev_history", JSON.stringify(history));
-      if (maxNozzles) localStorage.setItem("ev_max_nozzles", maxNozzles.toString());
+      if (maxNozzles) {
+        localStorage.setItem("ev_max_nozzles", maxNozzles.toString());
+        localStorage.setItem("ev_last_max_nozzles", maxNozzles.toString());
+      }
       localStorage.setItem("ev_disabled_nozzles", JSON.stringify([...disabledNozzles]));
       localStorage.removeItem("ev_theme"); // clean up legacy
     }
@@ -644,24 +647,46 @@ export default function EVQueueApp() {
           <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed">Pilih jumlah nozzle yang aktif di stasiun Anda sekarang untuk memulai.</p>
           
           <div className="flex flex-col gap-4 w-full">
-            <button onClick={() => setMaxNozzles(1)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
-              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors"><span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">1</span></div>
-              <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Stasiun Kecil</h3><p className="text-sm text-slate-500">Hanya 1 Dispenser & 1 Nozzle aktif</p></div>
-            </button>
-            <button onClick={() => setMaxNozzles(2)} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
-              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors"><span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">2</span></div>
-              <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Stasiun Standar</h3><p className="text-sm text-slate-500">Melayani 2 taksi (Dual Nozzle)</p></div>
-            </button>
-            <button onClick={() => { setMaxNozzles(12); setShowBulkStartModal(true); }} className="w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-2xl flex items-center gap-4 transition-all shadow-sm active:scale-95 group">
-              <div className="w-12 h-12 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50 transition-colors"><span className="text-xl font-bold text-slate-600 dark:text-slate-300 group-hover:text-teal-600 dark:group-hover:text-teal-400">12</span></div>
-              <div className="text-left"><h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Pool Besar</h3><p className="text-sm text-slate-500">Kapasitas penuh hingga 12 Nozzle</p></div>
-            </button>
-            <div className="my-2 flex items-center gap-4">
+            {[
+              { id: 1, title: 'Stasiun Kecil', desc: 'Hanya 1 Dispenser & 1 Nozzle aktif', color: 'bg-blue-500', iconBg: 'group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50', iconText: 'group-hover:text-blue-600 dark:group-hover:text-blue-400' },
+              { id: 2, title: 'Stasiun Standar', desc: 'Melayani 2 taksi (Dual Nozzle)', color: 'bg-teal-500', iconBg: 'group-hover:bg-teal-100 dark:group-hover:bg-teal-900/50', iconText: 'group-hover:text-teal-600 dark:group-hover:text-teal-400' },
+              { id: 12, title: 'Pool Besar', desc: 'Kapasitas penuh hingga 12 Nozzle', color: 'bg-purple-500', iconBg: 'group-hover:bg-purple-100 dark:group-hover:bg-purple-900/50', iconText: 'group-hover:text-purple-600 dark:group-hover:text-purple-400' },
+            ].map((option, idx) => {
+              const isLastUsed = typeof window !== 'undefined' && localStorage.getItem("ev_last_max_nozzles") === option.id.toString();
+              return (
+                <button 
+                  key={option.id}
+                  onClick={() => { 
+                    setMaxNozzles(option.id); 
+                    if (option.id === 12) setShowBulkStartModal(true); 
+                  }} 
+                  className={`w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-[2rem] flex items-center gap-4 transition-all shadow-sm active:scale-95 group animate-in slide-in-from-bottom-4 duration-700 relative overflow-hidden`}
+                  style={{ animationDelay: `${idx * 150}ms`, animationFillMode: 'both' }}
+                >
+                  {isLastUsed && (
+                    <div className="absolute top-0 right-0 bg-teal-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-tighter">Terakhir Digunakan</div>
+                  )}
+                  <div className={`w-14 h-14 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-[1.25rem] flex items-center justify-center transition-colors ${option.iconBg}`}>
+                    <span className={`text-2xl font-black text-slate-400 dark:text-slate-600 ${option.iconText}`}>{option.id}</span>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-xl font-black text-slate-800 dark:text-slate-200">{option.title}</h3>
+                    <p className="text-xs font-bold text-slate-500/80 dark:text-slate-500 uppercase tracking-tight">{option.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
+
+            <div className="my-4 flex items-center gap-4 animate-in fade-in duration-1000 delay-500 fill-mode-both">
                <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
-               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">ATAU LANJUTKAN DARI HP LAIN</span>
+               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">ATAU LANJUTKAN DARI HP LAIN</span>
                <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
             </div>
-            <button onClick={() => { setQrMode("scan"); setShowQrModal(true); }} className="w-full bg-slate-100 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 p-4 rounded-2xl flex items-center justify-center gap-3 transition-all text-slate-600 dark:text-slate-400 font-bold active:scale-95">
+
+            <button 
+              onClick={() => { setQrMode("scan"); setShowQrModal(true); }} 
+              className="w-full bg-slate-100 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 p-5 rounded-[2rem] flex items-center justify-center gap-3 transition-all text-slate-600 dark:text-slate-400 font-black active:scale-95 animate-in slide-in-from-bottom-4 duration-700 delay-[600ms] fill-mode-both"
+            >
                <Camera className="w-5 h-5 text-teal-500" /> Operan Shift? Scan QR Rekan
             </button>
           </div>
