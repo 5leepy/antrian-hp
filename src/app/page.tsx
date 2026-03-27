@@ -25,8 +25,10 @@ type ToastType = {
 
 // LOCATION REGISTRY (PROTOTYPE)
 const KNOWN_HUBS = [
-  { id: "surabaya-tengah", name: "Hub Surabaya Tengah", lat: -7.231232134758392, lng: 112.72427536107782, nozzles: 2 },
-  { id: "jakarta-pool", name: "Pool Utama Jakarta", lat: -6.2, lng: 106.8, nozzles: 12 },
+  { id: "kantor-pos-kebon-rojo", name: "Kantor Pos Kebon Rojo", lat: -7.24236443798293, lng: 112.73758919151526, nozzles: 2 },
+  { id: "central-park-mulyosari", name: "Central Park Mulyosari", lat: -7.266505067544998, lng: 112.79632778400531, nozzles: 2 },
+  { id: "indomaret-mastrip-185", name: "Indomaret Mastrip 185", lat: -7.308701843601947, lng: 112.71094103704718, nozzles: 2 },
+  { id: "depot-green-sm-surabaya", name: "Depot Green SM Surabaya", lat: -7.3472839834663315, lng: 112.73197263143236, nozzles: 12 },
 ];
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
