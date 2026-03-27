@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import LZString from "lz-string";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera, Save } from "lucide-react";
+import { Check, X, Clock, CarFront, History, List, BatteryCharging, Zap, Sun, Moon, Edit2, RotateCcw, Info, ChevronRight, SkipForward, QrCode, Trash2, Camera, Save, AlertTriangle } from "lucide-react";
 
 type QueueItem = {
   id: string;
@@ -101,21 +101,71 @@ export default function EVQueueApp() {
   const [identifyingCar, setIdentifyingCar] = useState<QueueItem | null>(null);
   const [identifyInput, setIdentifyInput] = useState("");
 
+  // Disabled Nozzles State
+  const [disabledNozzles, setDisabledNozzles] = useState<Set<number>>(new Set());
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Long-press handlers for nozzle disable/enable
+  const handleNozzleLongPressStart = (nozzleNum: number, isDisabled: boolean, car: QueueItem | undefined) => {
+    longPressTimerRef.current = setTimeout(() => {
+      const label = nozzleLabel(nozzleNum, maxNozzles);
+      if (isDisabled) {
+        setConfirmDialog({
+          isOpen: true,
+          title: "Aktifkan Nozzle?",
+          message: `Nozzle ${label} akan diaktifkan kembali dan bisa menerima taksi.`,
+          onConfirm: () => {
+            setDisabledNozzles(prev => {
+              const next = new Set(prev);
+              next.delete(nozzleNum);
+              return next;
+            });
+            showToast(`Nozzle ${label} aktif kembali`, "success");
+            setConfirmDialog(null);
+          }
+        });
+      } else {
+        const hasCarMsg = car ? ` Taksi ${car.fleetNumber} akan otomatis diselesaikan.` : '';
+        setConfirmDialog({
+          isOpen: true,
+          title: "Nonaktifkan Nozzle?",
+          message: `Nozzle ${label} akan dinonaktifkan (OFF) dan tidak bisa menerima taksi.${hasCarMsg} Gunakan ini untuk kendala teknis, maintenance, atau keperluan operasional lainnya.`,
+          onConfirm: () => {
+            if (car) {
+              executeAction(car, "completed");
+            }
+            setDisabledNozzles(prev => new Set(prev).add(nozzleNum));
+            showToast(`Nozzle ${label} dinonaktifkan`, "info");
+            setConfirmDialog(null);
+          }
+        });
+      }
+    }, 800);
+  };
+
+  const handleNozzleLongPressEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
   // Bulk Start Handler
   const handleBulkStart = () => {
-    const newCars: QueueItem[] = Array.from({ length: 12 }, (_, i) => ({
+    const activeNozzles = Array.from({ length: 12 }, (_, i) => i + 1).filter(n => !disabledNozzles.has(n));
+    const newCars: QueueItem[] = activeNozzles.map(n => ({
       id: crypto.randomUUID(),
       fleetNumber: "---", // Special marker for unknown
       enqueueTime: Date.now(),
       chargingTime: Date.now(),
-      assignedNozzle: i + 1,
+      assignedNozzle: n,
       status: "charging",
       isUnknown: true
     }));
     
     setQueue(prev => [...prev, ...newCars]);
     setShowBulkStartModal(false);
-    showToast("12 Nozzle telah diaktifkan secara otomatis", "success");
+    showToast(`${activeNozzles.length} Nozzle telah diaktifkan secara otomatis`, "success");
   };
 
   // Edit State
@@ -147,11 +197,15 @@ export default function EVQueueApp() {
     const savedQueue = localStorage.getItem("ev_queue");
     const savedHistory = localStorage.getItem("ev_history");
     const savedNozzles = localStorage.getItem("ev_max_nozzles");
+    const savedDisabled = localStorage.getItem("ev_disabled_nozzles");
 
     if (savedQueue) setQueue(JSON.parse(savedQueue));
     if (savedHistory) setHistory(JSON.parse(savedHistory));
     if (savedNozzles) {
       setMaxNozzles(parseInt(savedNozzles, 10));
+    }
+    if (savedDisabled) {
+      try { setDisabledNozzles(new Set(JSON.parse(savedDisabled))); } catch(e) {}
     }
 
     const savedTheme = localStorage.getItem("ev_theme");
@@ -196,9 +250,10 @@ export default function EVQueueApp() {
       localStorage.setItem("ev_queue", JSON.stringify(queue));
       localStorage.setItem("ev_history", JSON.stringify(history));
       if (maxNozzles) localStorage.setItem("ev_max_nozzles", maxNozzles.toString());
+      localStorage.setItem("ev_disabled_nozzles", JSON.stringify([...disabledNozzles]));
       localStorage.removeItem("ev_theme"); // clean up legacy
     }
-  }, [queue, history, maxNozzles, isLoaded]);
+  }, [queue, history, maxNozzles, disabledNozzles, isLoaded]);
 
   // Handle incoming transfer URL
   useEffect(() => {
@@ -213,7 +268,7 @@ export default function EVQueueApp() {
           if (Array.isArray(parsed)) {
             setIncomingTransfer({ queue: parsed, maxNozzles: null });
           } else if (parsed && parsed.q) {
-            setIncomingTransfer({ queue: parsed.q, maxNozzles: parsed.m || null });
+            setIncomingTransfer({ queue: parsed.q, maxNozzles: parsed.m || null, disabledNozzles: parsed.d || [] });
           }
         }
       } catch (e) {
@@ -274,7 +329,7 @@ export default function EVQueueApp() {
   };
 
   const generateTransferUrl = () => {
-    const payload = { q: queue, m: maxNozzles };
+    const payload = { q: queue, m: maxNozzles, d: [...disabledNozzles] };
     const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(payload));
     const url = `${window.location.origin}?q=${compressed}`;
     setTransferUrl(url);
@@ -286,6 +341,9 @@ export default function EVQueueApp() {
       setQueue(incomingTransfer.queue);
       if (incomingTransfer.maxNozzles) {
         setMaxNozzles(incomingTransfer.maxNozzles);
+      }
+      if ((incomingTransfer as any).disabledNozzles) {
+        setDisabledNozzles(new Set((incomingTransfer as any).disabledNozzles));
       }
       setIncomingTransfer(null);
       showToast("Antrian berhasil ditimpa dengan data transfer!", "success");
@@ -305,7 +363,7 @@ export default function EVQueueApp() {
       if (Array.isArray(parsed)) {
         setIncomingTransfer({ queue: parsed, maxNozzles: null });
       } else if (parsed && parsed.q) {
-        setIncomingTransfer({ queue: parsed.q, maxNozzles: parsed.m || null });
+        setIncomingTransfer({ queue: parsed.q, maxNozzles: parsed.m || null, disabledNozzles: parsed.d || [] });
       } else {
         throw new Error("Invalid structure");
       }
@@ -324,9 +382,11 @@ export default function EVQueueApp() {
         setQueue([]);
         setHistory([]);
         setMaxNozzles(null); // This will trigger the Setup Modal
+        setDisabledNozzles(new Set());
         localStorage.removeItem("ev_queue");
         localStorage.removeItem("ev_history");
         localStorage.removeItem("ev_max_nozzles");
+        localStorage.removeItem("ev_disabled_nozzles");
         setConfirmDialog(null);
         showToast("Seluruh data antrian & riwayat telah di-reset", "info");
       }
@@ -529,7 +589,8 @@ export default function EVQueueApp() {
   // Global Modal Modifiers Moved downstream
   const chargingCars = queue.filter(q => q.status === "charging").sort((a,b) => (a.chargingTime || 0) - (b.chargingTime || 0));
   const waitingCars = queue.filter(q => q.status === "waiting").sort((a, b) => a.enqueueTime - b.enqueueTime);
-  const isNozzleFull = chargingCars.length >= (maxNozzles || 2); // Default to 2 if maxNozzles is null (shouldn't happen after setup)
+  const effectiveMaxNozzles = (maxNozzles || 2) - disabledNozzles.size;
+  const isNozzleFull = chargingCars.length >= effectiveMaxNozzles;
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -669,6 +730,7 @@ export default function EVQueueApp() {
                 onClick={() => {
                   const nozzleCount = maxNozzles || 2;
                   const freeNozzles = Array.from({ length: nozzleCount }, (_, i) => i + 1).filter(n => {
+                    if (disabledNozzles.has(n)) return false;
                     return !chargingCars.find(c => c.assignedNozzle === n) && !(chargingCars[n-1] && !chargingCars[n-1].assignedNozzle);
                   });
                   // Auto-dispatch if exactly one nozzle is free (no choice needed)
@@ -694,7 +756,7 @@ export default function EVQueueApp() {
                   Dashboard Nozzle
                 </h2>
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${isNozzleFull ? 'bg-rose-100 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-500/20' : 'bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300 border-teal-200 dark:border-teal-500/20'}`}>
-                  {chargingCars.length} / {maxNozzles} Terisi
+                  {chargingCars.length} / {effectiveMaxNozzles} Terisi
                 </span>
               </div>
 
@@ -704,25 +766,29 @@ export default function EVQueueApp() {
                   Array.from({ length: 6 }, (_, i) => i + 1).map(dispenserNum => {
                     const nA = dispenserNum * 2 - 1;
                     const nB = dispenserNum * 2;
-                    const carA = chargingCars.find(c => c.assignedNozzle === nA) || (chargingCars[nA-1] && !chargingCars[nA-1].assignedNozzle ? chargingCars[nA-1] : undefined);
-                    const carB = chargingCars.find(c => c.assignedNozzle === nB) || (chargingCars[nB-1] && !chargingCars[nB-1].assignedNozzle ? chargingCars[nB-1] : undefined);
-                    const isFull = carA && carB;
+                    const disabledA = disabledNozzles.has(nA);
+                    const disabledB = disabledNozzles.has(nB);
+                    const carA = disabledA ? undefined : (chargingCars.find(c => c.assignedNozzle === nA) || (chargingCars[nA-1] && !chargingCars[nA-1].assignedNozzle ? chargingCars[nA-1] : undefined));
+                    const carB = disabledB ? undefined : (chargingCars.find(c => c.assignedNozzle === nB) || (chargingCars[nB-1] && !chargingCars[nB-1].assignedNozzle ? chargingCars[nB-1] : undefined));
+                    const bothDisabled = disabledA && disabledB;
+                    const isFull = !bothDisabled && (carA || disabledA) && (carB || disabledB);
 
                     return (
-                    <div key={dispenserNum} className={`bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-3xl p-3 flex flex-col gap-2 transition-all duration-500 ${isFull ? 'shadow-[0_0_15px_rgba(20,184,166,0.15)] bg-teal-50/30 dark:bg-teal-900/10 border-teal-200 dark:border-teal-500/20' : 'shadow-sm'}`}>
+                    <div key={dispenserNum} className={`bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 rounded-3xl p-3 flex flex-col gap-2 transition-all duration-500 ${bothDisabled ? 'opacity-60 bg-slate-200/50 dark:bg-slate-800/50 border-rose-300/50 dark:border-rose-500/20' : isFull ? 'shadow-[0_0_15px_rgba(20,184,166,0.15)] bg-teal-50/30 dark:bg-teal-900/10 border-teal-200 dark:border-teal-500/20' : 'shadow-sm'}`}>
                       <div className="flex justify-between items-center px-1">
                         <div className="flex flex-col">
                           <span className="text-[10px] font-black tracking-widest text-slate-400 dark:text-slate-500 uppercase">Dispenser {dispenserNum}</span>
                         </div>
                         {/* Status LEDs */}
                         <div className="flex gap-1.5 p-1 bg-slate-200/50 dark:bg-slate-700/50 rounded-full">
-                          <div className={`w-2 h-2 rounded-full transition-all duration-500 ${carA ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
-                          <div className={`w-2 h-2 rounded-full transition-all duration-500 ${carB ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                          <div className={`w-2 h-2 rounded-full transition-all duration-500 ${disabledA ? 'bg-rose-400 shadow-[0_0_5px_rgba(244,63,94,0.5)]' : carA ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
+                          <div className={`w-2 h-2 rounded-full transition-all duration-500 ${disabledB ? 'bg-rose-400 shadow-[0_0_5px_rgba(244,63,94,0.5)]' : carB ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)] animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`}></div>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         {[nA, nB].map(n => {
                           const car = n === nA ? carA : carB;
+                          const isDisabled = disabledNozzles.has(n);
                           const label = nozzleLabel(n, maxNozzles);
                           const side = label.split('-')[1]; // Get 'A' or 'B'
                           
@@ -730,6 +796,7 @@ export default function EVQueueApp() {
                             <div 
                               key={n} 
                               onClick={() => { 
+                                if (isDisabled) return; // Tap does nothing on disabled
                                 if(car) {
                                     if ((car as any).isUnknown && car.fleetNumber === "---") {
                                         setIdentifyingCar(car);
@@ -747,10 +814,25 @@ export default function EVQueueApp() {
                                     }
                                 }
                               }}
-                              className={`rounded-2xl p-3 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950' : 'bg-white/50 dark:bg-slate-900/30 border-slate-200/60 dark:border-slate-800/60 border-dashed backdrop-blur-sm'}`}
+                              onTouchStart={() => handleNozzleLongPressStart(n, isDisabled, car)}
+                              onTouchEnd={handleNozzleLongPressEnd}
+                              onMouseDown={() => handleNozzleLongPressStart(n, isDisabled, car)}
+                              onMouseUp={handleNozzleLongPressEnd}
+                              onMouseLeave={handleNozzleLongPressEnd}
+                              className={`rounded-2xl p-3 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all select-none ${
+                                isDisabled 
+                                  ? 'bg-slate-200/80 dark:bg-slate-800/80 border-rose-300/60 dark:border-rose-500/30 border-dashed cursor-pointer' 
+                                  : car 
+                                    ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950' 
+                                    : 'bg-white/50 dark:bg-slate-900/30 border-slate-200/60 dark:border-slate-800/60 border-dashed backdrop-blur-sm'}`}
                             >
-                              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-1">{side}</span>
-                              {car ? (
+                              <span className={`text-[10px] font-black mb-1 ${isDisabled ? 'text-rose-400 dark:text-rose-500' : 'text-slate-400 dark:text-slate-500'}`}>{side}</span>
+                              {isDisabled ? (
+                                <>
+                                  <AlertTriangle className="w-4 h-4 text-rose-400 dark:text-rose-500 mb-0.5" />
+                                  <span className="text-[8px] font-black text-rose-400 dark:text-rose-500 tracking-widest uppercase">OFF</span>
+                                </>
+                              ) : car ? (
                                 <>
                                   {(car as any).isUnknown && car.fleetNumber === "---" ? (
                                       <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-full mb-1">
@@ -775,13 +857,15 @@ export default function EVQueueApp() {
                 ) : (
                   // Original Standalone Layout for 1-2 Nozzles (Reverted for better proportions)
                   Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1).map(n => {
-                    const car = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
+                    const isDisabled = disabledNozzles.has(n);
+                    const car = isDisabled ? undefined : (chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined));
                     const label = nozzleLabel(n, maxNozzles);
                     return (
                       <div key={n} className="flex flex-col gap-2">
                         <div 
                           key={n} 
                           onClick={() => { 
+                            if (isDisabled) return;
                             if(car) {
                                 if ((car as any).isUnknown && car.fleetNumber === "---") {
                                     setIdentifyingCar(car);
@@ -799,10 +883,25 @@ export default function EVQueueApp() {
                                 }
                             }
                           }}
-                          className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all min-h-[140px] ${car ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950' : 'bg-white/50 dark:bg-slate-900/30 border-slate-200/60 dark:border-slate-800/60 border-dashed backdrop-blur-sm'}`}
+                          onTouchStart={() => handleNozzleLongPressStart(n, isDisabled, car)}
+                          onTouchEnd={handleNozzleLongPressEnd}
+                          onMouseDown={() => handleNozzleLongPressStart(n, isDisabled, car)}
+                          onMouseUp={handleNozzleLongPressEnd}
+                          onMouseLeave={handleNozzleLongPressEnd}
+                          className={`rounded-2xl p-4 border-2 relative overflow-hidden flex flex-col items-center justify-center text-center transition-all min-h-[140px] select-none ${
+                            isDisabled
+                              ? 'bg-slate-200/80 dark:bg-slate-800/80 border-rose-300/60 dark:border-rose-500/30 border-dashed cursor-pointer'
+                              : car 
+                                ? 'bg-white dark:bg-slate-900 border-teal-400 dark:border-teal-500/50 shadow-md cursor-pointer hover:bg-teal-50 dark:hover:bg-teal-900/30 active:scale-95 ring-offset-2 ring-offset-slate-50 dark:ring-offset-slate-950' 
+                                : 'bg-white/50 dark:bg-slate-900/30 border-slate-200/60 dark:border-slate-800/60 border-dashed backdrop-blur-sm'}`}
                         >
-                          <span className="absolute top-1.5 left-2 text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500">{label}</span>
-                          {car ? (
+                          <span className={`absolute top-1.5 left-2 text-[10px] sm:text-xs font-black ${isDisabled ? 'text-rose-400 dark:text-rose-500' : 'text-slate-400 dark:text-slate-500'}`}>{label}</span>
+                          {isDisabled ? (
+                            <>
+                              <AlertTriangle className="w-8 h-8 text-rose-400 dark:text-rose-500 mb-1" />
+                              <span className="text-xs font-black text-rose-400 dark:text-rose-500 tracking-widest uppercase">OFF</span>
+                            </>
+                          ) : car ? (
                             <>
                               <div className="absolute top-0 right-0 w-8 h-8 bg-teal-100 dark:bg-teal-500/20 rounded-bl-full flex items-start justify-end pr-1 pt-1 opacity-50"></div>
                               {(car as any).isUnknown && car.fleetNumber === "---" ? (
@@ -960,16 +1059,22 @@ export default function EVQueueApp() {
                         {Array.from({ length: 6 }, (_, i) => i + 1).map(disp => {
                           const nA = disp * 2 - 1;
                           const nB = disp * 2;
-                          const carA = chargingCars.find(c => c.assignedNozzle === nA);
-                          const carB = chargingCars.find(c => c.assignedNozzle === nB);
-                          const isFull = carA && carB;
+                          const disA = disabledNozzles.has(nA);
+                          const disB = disabledNozzles.has(nB);
+                          const bothDis = disA && disB;
+                          const carA = disA ? undefined : chargingCars.find(c => c.assignedNozzle === nA);
+                          const carB = disB ? undefined : chargingCars.find(c => c.assignedNozzle === nB);
+                          const isFull = !bothDis && (carA || disA) && (carB || disB);
 
                           return (
                           <button
                             key={disp}
-                            onClick={() => setSelectedDispenser(disp)}
+                            disabled={bothDis}
+                            onClick={() => !bothDis && setSelectedDispenser(disp)}
                             className={`aspect-square rounded-3xl border-2 flex flex-col items-center justify-center transition-all active:scale-90 shadow-sm relative overflow-hidden group ${
-                                isFull 
+                                bothDis
+                                ? 'bg-slate-200/50 dark:bg-slate-800/50 border-rose-300/40 dark:border-rose-500/20 opacity-50 border-dashed cursor-not-allowed'
+                                : isFull 
                                 ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-500/30' 
                                 : carA || carB
                                 ? 'bg-white dark:bg-slate-900 border-amber-100 dark:border-amber-500/20 shadow-sm shadow-amber-500/5'
@@ -977,6 +1082,7 @@ export default function EVQueueApp() {
                             }`}
                           >
                             <span className={`text-3xl font-black ${
+                              bothDis ? 'text-rose-400 dark:text-rose-500' :
                               isFull ? 'text-amber-600 dark:text-amber-400' : 
                               (carA || carB) ? 'text-slate-800 dark:text-white' : 
                               'text-emerald-600 dark:text-emerald-400'
@@ -984,18 +1090,24 @@ export default function EVQueueApp() {
                             
                             {/* Occupancy Indicators */}
                             <div className="flex gap-1.5 mt-2 p-1 bg-white/60 dark:bg-slate-800/80 rounded-full shadow-inner">
-                                <div className={`w-2 h-2 rounded-full transition-all ${carA ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)]' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
-                                <div className={`w-2 h-2 rounded-full transition-all ${carB ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)]' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
+                                <div className={`w-2 h-2 rounded-full transition-all ${disA ? 'bg-rose-400 shadow-[0_0_5px_rgba(244,63,94,0.5)]' : carA ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)]' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
+                                <div className={`w-2 h-2 rounded-full transition-all ${disB ? 'bg-rose-400 shadow-[0_0_5px_rgba(244,63,94,0.5)]' : carB ? 'bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.5)]' : 'bg-slate-200 dark:bg-slate-700'}`}></div>
                             </div>
 
-                            {isFull && (
+                            {bothDis && (
+                                <div className="absolute top-2 right-1 rotate-[15deg]">
+                                    <span className="bg-rose-500/70 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow-md uppercase tracking-tighter border border-white/20">OFF</span>
+                                </div>
+                            )}
+
+                            {!bothDis && isFull && (
                                 <div className="absolute top-2 right-1 rotate-[15deg]">
                                     <span className="bg-rose-500/70 text-white text-[7px] font-black px-1.5 py-0.5 rounded shadow-md uppercase tracking-tighter border border-white/20">FULL</span>
                                 </div>
                             )}
                             
                             {/* Inner Glow Effect */}
-                            <div className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${isFull ? 'bg-amber-400/5 opacity-100' : (carA || carB) ? 'bg-amber-400/5 opacity-50' : 'bg-emerald-400/5 opacity-100'}`}></div>
+                            <div className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${bothDis ? 'bg-rose-400/5 opacity-100' : isFull ? 'bg-amber-400/5 opacity-100' : (carA || carB) ? 'bg-amber-400/5 opacity-50' : 'bg-emerald-400/5 opacity-100'}`}></div>
                           </button>
                         )})}
                       </div>
@@ -1005,20 +1117,33 @@ export default function EVQueueApp() {
                           ? [selectedDispenser! * 2 - 1, selectedDispenser! * 2] 
                           : Array.from({ length: maxNozzles || 2 }, (_, i) => i + 1)
                         ).map(n => {
-                          const occupied = chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined);
+                          const isDisabled = disabledNozzles.has(n);
+                          const occupied = isDisabled ? undefined : (chargingCars.find(c => c.assignedNozzle === n) || (chargingCars[n-1] && !chargingCars[n-1].assignedNozzle ? chargingCars[n-1] : undefined));
                           const chargingMins = occupied ? Math.floor((currentTime - (occupied.chargingTime || occupied.enqueueTime)) / 60000) : 0;
                           return (
                             <button 
                               key={n} 
+                              disabled={isDisabled}
                               onClick={() => {
+                                if (isDisabled) return;
                                 dispatchToNozzle(n, waitingCars[0], occupied);
                                 setShowDispatchModal(false);
                                 setSelectedDispenser(null);
                               }}
-                              className={`p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all active:scale-95 ${occupied ? 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-500/50'}`}
+                              className={`p-3 rounded-2xl border-2 flex flex-col items-center justify-center transition-all active:scale-95 ${
+                                isDisabled 
+                                  ? 'bg-slate-200/50 dark:bg-slate-800/50 border-rose-300/40 dark:border-rose-500/20 border-dashed opacity-50 cursor-not-allowed' 
+                                  : occupied 
+                                    ? 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30' 
+                                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-500/50'}`}
                             >
-                              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-1">{nozzleLabel(n, maxNozzles)}</span>
-                              {occupied ? (
+                              <span className={`text-xs font-bold mb-1 ${isDisabled ? 'text-rose-400 dark:text-rose-500' : 'text-slate-400 dark:text-slate-500'}`}>{nozzleLabel(n, maxNozzles)}</span>
+                              {isDisabled ? (
+                                <>
+                                  <AlertTriangle className="w-5 h-5 text-rose-400 dark:text-rose-500 my-1" />
+                                  <span className="text-[9px] font-black text-rose-400 dark:text-rose-500 tracking-widest uppercase">OFF</span>
+                                </>
+                              ) : occupied ? (
                                 <>
                                   <span className="font-black text-xl text-slate-800 dark:text-white">{occupied.fleetNumber}</span>
                                   <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-0.5 mt-0.5">
