@@ -399,6 +399,37 @@ export default function EVQueueApp() {
     // Hanya perbolehkan angka (0-9) dengan menghapus karakter lain
     const val = e.target.value.replace(/\D/g, '').slice(0, 3);
     setFleetInput(val);
+
+    // AUTO-SUBMIT: Jika mencapai 3 digit, otomatis panggil handleAdd
+    if (val.length === 3) {
+      // Small delay to let the UI update and user see the 3rd digit
+      setTimeout(() => {
+        const inputClean = val.padStart(3, '0');
+        const isExist = queue.some(q => q.fleetNumber === inputClean);
+        
+        if (isExist) {
+          showToast(`Taksi ${inputClean} sudah ada di antrian atau sedang charging!`, "error");
+          setFleetInput("");
+          return;
+        }
+
+        const newItem: QueueItem = {
+          id: crypto.randomUUID(),
+          fleetNumber: inputClean,
+          enqueueTime: Date.now(),
+          status: "waiting",
+        };
+
+        setQueue((prev) => [...prev, newItem]);
+        setFleetInput("");
+        showToast(`Taksi ${inputClean} berhasil masuk antrian`, "success");
+        
+        // HAPTIC FEEDBACK: Getar halus saat berhasil
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+           navigator.vibrate(40);
+        }
+      }, 50);
+    }
   };
 
   const handleAdd = (e: React.FormEvent) => {
@@ -701,10 +732,11 @@ export default function EVQueueApp() {
             {/* COMPACT ADD FORM */}
             <form onSubmit={handleAdd} className="flex items-center gap-3 relative bg-white dark:bg-slate-900 p-2 pl-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm focus-within:ring-2 focus-within:ring-teal-500/50 transition-all">
               <div className="flex-1 flex items-center gap-3">
-                <CarFront className="w-5 h-5 text-teal-500 shrink-0" />
+                <CarFront className={`w-5 h-5 text-teal-500 shrink-0 ${fleetInput.length > 0 ? 'animate-pulse' : ''}`} />
                 <input
                   type="text"
                   value={fleetInput}
+                  onFocus={() => { if(typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10); }}
                   onChange={handleFleetInputChange}
                   placeholder="Ketik No. Lambung..."
                   maxLength={3}
@@ -750,6 +782,7 @@ export default function EVQueueApp() {
             {waitingCars.length > 0 && (
               <button 
                 onClick={() => {
+                  if (isNozzleFull) return;
                   const nozzleCount = maxNozzles || 2;
                   const freeNozzles = Array.from({ length: nozzleCount }, (_, i) => i + 1).filter(n => {
                     if (disabledNozzles.has(n)) return false;
@@ -762,11 +795,16 @@ export default function EVQueueApp() {
                     setShowDispatchModal(true);
                   }
                 }}
-                className="w-full mt-2 py-5 rounded-3xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-black text-xl shadow-lg shadow-teal-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 relative overflow-hidden group border-b-4 border-emerald-600/50"
+                disabled={isNozzleFull}
+                className={`w-full mt-2 py-5 rounded-3xl font-black text-xl shadow-lg transition-all flex items-center justify-center gap-3 relative overflow-hidden group border-b-4 
+                  ${isNozzleFull 
+                    ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border-slate-300 dark:border-slate-900 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-teal-500/30 active:scale-[0.98] border-emerald-600/50 animate-glow-shimmer'
+                  }`}
               >
-                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                <Zap className="w-7 h-7 fill-white drop-shadow-md" />
-                PANGGIL BERIKUTNYA
+                {!isNozzleFull && <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>}
+                <Zap className={`w-7 h-7 drop-shadow-md ${isNozzleFull ? 'text-slate-300 dark:text-slate-700' : 'fill-white'}`} />
+                {isNozzleFull ? "SEMUA NOZZLE PENUH" : "PANGGIL BERIKUTNYA"}
               </button>
             )}
 
@@ -981,7 +1019,12 @@ export default function EVQueueApp() {
 
                     return (
                     <li key={item.id} className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col gap-4 shadow-sm relative overflow-hidden group ${isNozzleFull ? 'opacity-90' : ''}`}>
-                      <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-amber-400 to-amber-500"></div>
+                      {/* INDICATOR: Merah berdenyut jika menunggu > 45 mnt */}
+                      {Math.floor((currentTime - item.enqueueTime) / 60000) >= 45 ? (
+                        <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-500 animate-pulse-fast"></div>
+                      ) : (
+                        <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-amber-400 to-amber-500"></div>
+                      )}
                       
                       <div className="flex justify-between items-start pl-2">
                         <div>
@@ -1638,4 +1681,33 @@ export default function EVQueueApp() {
       )}
     </div>
   );
+}
+
+// STYLES FOR CUSTOM ANIMATIONS
+const style = `
+@keyframes glow-shimmer {
+  0% { box-shadow: 0 0 5px rgba(20, 184, 166, 0.2); border-color: rgba(5, 150, 105, 0.4); }
+  50% { box-shadow: 0 0 20px rgba(20, 184, 166, 0.4); border-color: rgba(5, 150, 105, 0.8); }
+  100% { box-shadow: 0 0 5px rgba(20, 184, 166, 0.2); border-color: rgba(5, 150, 105, 0.4); }
+}
+
+@keyframes pulse-fast {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.animate-glow-shimmer {
+  animation: glow-shimmer 2s infinite ease-in-out;
+}
+
+.animate-pulse-fast {
+  animation: pulse-fast 1.5s infinite ease-in-out;
+}
+`;
+
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = style;
+  document.head.appendChild(styleSheet);
 }
