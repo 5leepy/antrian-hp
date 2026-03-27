@@ -882,13 +882,13 @@ export default function EVQueueApp() {
                 }}
                 className={`w-full mt-2 py-5 rounded-3xl font-black text-xl shadow-lg transition-all flex items-center justify-center gap-3 relative overflow-hidden group border-b-4 
                   ${isNozzleFull 
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/30 active:scale-[0.98] border-orange-600/50' 
+                    ? 'bg-slate-900 border-slate-800 text-slate-400 shadow-slate-900/40 active:scale-[0.98] ring-1 ring-teal-500/20' 
                     : 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-teal-500/30 active:scale-[0.98] border-emerald-600/50 animate-glow-shimmer'
                   }`}
               >
                 {!isNozzleFull && <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>}
-                <Zap className={`w-7 h-7 drop-shadow-md ${isNozzleFull ? 'fill-white animate-pulse' : 'fill-white'}`} />
-                {isNozzleFull ? "KAPASITAS PENUH (OVERRIDE?)" : "PANGGIL BERIKUTNYA"}
+                <Zap className={`w-7 h-7 drop-shadow-md ${isNozzleFull ? 'text-teal-500/50 fill-teal-500/20' : 'fill-white'}`} />
+                {isNozzleFull ? "PANGGIL (ANTRIAN PENUH)" : "PANGGIL BERIKUTNYA"}
               </button>
             )}
 
