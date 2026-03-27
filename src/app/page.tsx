@@ -23,6 +23,21 @@ type ToastType = {
   type: "success" | "error" | "info";
 };
 
+// LOCATION REGISTRY (PROTOTYPE)
+const KNOWN_HUBS = [
+  { id: "surabaya-tengah", name: "Hub Surabaya Tengah", lat: -7.231232134758392, lng: 112.72427536107782, nozzles: 2 },
+  { id: "jakarta-pool", name: "Pool Utama Jakarta", lat: -6.2, lng: 106.8, nozzles: 12 },
+];
+
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+}
+
 const AVG_CHARGING_TIME_MINS = 30; // 30 minutes average
 
 // Make SwipeButton accept compact prop
@@ -101,6 +116,8 @@ export default function EVQueueApp() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [identifyingCar, setIdentifyingCar] = useState<QueueItem | null>(null);
   const [identifyInput, setIdentifyInput] = useState("");
+  const [detectedHub, setDetectedHub] = useState<{ name: string, nozzles: number } | null>(null);
+  const [isDetecting, setIsDetecting] = useState(false);
 
   // Disabled Nozzles State
   const [disabledNozzles, setDisabledNozzles] = useState<Set<number>>(new Set());
@@ -237,6 +254,38 @@ export default function EVQueueApp() {
        return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
     }
   }, []);
+
+  // GPS DETECTION LOGIC
+  useEffect(() => {
+    if (maxNozzles === null && typeof navigator !== 'undefined' && navigator.geolocation) {
+      setIsDetecting(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          let closestHub = null;
+          let minDistance = 0.5; // Radius 500m
+
+          for (const hub of KNOWN_HUBS) {
+            const dist = getDistance(latitude, longitude, hub.lat, hub.lng);
+            if (dist < minDistance) {
+              minDistance = dist;
+              closestHub = hub;
+            }
+          }
+
+          if (closestHub) {
+            setDetectedHub({ name: closestHub.name, nozzles: closestHub.nozzles });
+            showToast(`Lokasi Terdeteksi: ${closestHub.name}`, "info");
+          }
+          setIsDetecting(false);
+        },
+        () => {
+          setIsDetecting(false);
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, [maxNozzles]);
 
   const nozzleLabel = (n: number, max: number | null) => {
     const total = max || 2;
@@ -653,6 +702,8 @@ export default function EVQueueApp() {
               { id: 12, title: 'Pool Besar', desc: 'Kapasitas penuh hingga 12 Nozzle', color: 'bg-purple-500', iconBg: 'group-hover:bg-purple-100 dark:group-hover:bg-purple-900/50', iconText: 'group-hover:text-purple-600 dark:group-hover:text-purple-400' },
             ].map((option, idx) => {
               const isLastUsed = typeof window !== 'undefined' && localStorage.getItem("ev_last_max_nozzles") === option.id.toString();
+              const isRecommended = detectedHub && detectedHub.nozzles === option.id;
+              
               return (
                 <button 
                   key={option.id}
@@ -660,18 +711,26 @@ export default function EVQueueApp() {
                     setMaxNozzles(option.id); 
                     if (option.id === 12) setShowBulkStartModal(true); 
                   }} 
-                  className={`w-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-[2rem] flex items-center gap-4 transition-all shadow-sm active:scale-95 group animate-in slide-in-from-bottom-4 duration-700 relative overflow-hidden`}
+                  className={`w-full bg-white dark:bg-slate-900 border-2 ${isRecommended ? 'border-teal-500 shadow-teal-500/20 shadow-lg ring-4 ring-teal-500/10 scale-[1.02]' : 'border-slate-200 dark:border-slate-800'} hover:border-teal-400 dark:hover:border-teal-500 p-5 rounded-[2.5rem] flex items-center gap-4 transition-all active:scale-95 group animate-in slide-in-from-bottom-4 duration-700 relative overflow-hidden`}
                   style={{ animationDelay: `${idx * 150}ms`, animationFillMode: 'both' }}
                 >
-                  {isLastUsed && (
-                    <div className="absolute top-0 right-0 bg-teal-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-tighter">Terakhir Digunakan</div>
+                  {isLastUsed && !isRecommended && (
+                    <div className="absolute top-0 right-0 bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[8px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-tighter">Terakhir Digunakan</div>
                   )}
-                  <div className={`w-14 h-14 shrink-0 bg-slate-100 dark:bg-slate-800 rounded-[1.25rem] flex items-center justify-center transition-colors ${option.iconBg}`}>
-                    <span className={`text-2xl font-black text-slate-400 dark:text-slate-600 ${option.iconText}`}>{option.id}</span>
+                  {isRecommended && (
+                    <div className="absolute top-0 right-0 bg-teal-500 text-white text-[9px] font-black px-4 py-1.5 rounded-bl-2xl uppercase tracking-widest animate-pulse shadow-md z-10">Sesuai Lokasi</div>
+                  )}
+                  <div className={`w-14 h-14 shrink-0 ${isRecommended ? 'bg-teal-500 text-white' : 'bg-slate-100 dark:bg-slate-800'} rounded-[1.25rem] flex items-center justify-center transition-colors ${option.iconBg}`}>
+                    <span className={`text-2xl font-black ${isRecommended ? 'text-white' : 'text-slate-400 dark:text-slate-600'} ${option.iconText}`}>{option.id}</span>
                   </div>
                   <div className="text-left">
-                    <h3 className="text-xl font-black text-slate-800 dark:text-slate-200">{option.title}</h3>
-                    <p className="text-xs font-bold text-slate-500/80 dark:text-slate-500 uppercase tracking-tight">{option.desc}</p>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-black text-slate-800 dark:text-slate-200">{option.title}</h3>
+                      {isRecommended && <div className="w-2 h-2 rounded-full bg-teal-500 animate-ping"></div>}
+                    </div>
+                    <p className={`text-[10px] font-bold ${isRecommended ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500/80 dark:text-slate-500'} uppercase tracking-tighter`}>
+                      {isRecommended ? `${detectedHub.name} Terdeteksi` : option.desc}
+                    </p>
                   </div>
                 </button>
               );
