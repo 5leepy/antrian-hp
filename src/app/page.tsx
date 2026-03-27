@@ -868,29 +868,27 @@ export default function EVQueueApp() {
             {waitingCars.length > 0 && (
               <button 
                 onClick={() => {
-                  if (isNozzleFull) return;
                   const nozzleCount = maxNozzles || 2;
                   const freeNozzles = Array.from({ length: nozzleCount }, (_, i) => i + 1).filter(n => {
                     if (disabledNozzles.has(n)) return false;
-                    return !chargingCars.find(c => c.assignedNozzle === n) && !(chargingCars[n-1] && !chargingCars[n-1].assignedNozzle);
+                    return !chargingCars.find(c => c.assignedNozzle === n);
                   });
-                  // Auto-dispatch if exactly one nozzle is free (no choice needed)
-                  if (freeNozzles.length === 1) {
+                  // Auto-dispatch ONLY if exactly one nozzle is free (no choice needed)
+                  if (freeNozzles.length === 1 && !isNozzleFull) {
                     dispatchToNozzle(freeNozzles[0], waitingCars[0]);
                   } else {
                     setShowDispatchModal(true);
                   }
                 }}
-                disabled={isNozzleFull}
                 className={`w-full mt-2 py-5 rounded-3xl font-black text-xl shadow-lg transition-all flex items-center justify-center gap-3 relative overflow-hidden group border-b-4 
                   ${isNozzleFull 
-                    ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border-slate-300 dark:border-slate-900 cursor-not-allowed' 
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/30 active:scale-[0.98] border-orange-600/50' 
                     : 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-teal-500/30 active:scale-[0.98] border-emerald-600/50 animate-glow-shimmer'
                   }`}
               >
                 {!isNozzleFull && <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>}
-                <Zap className={`w-7 h-7 drop-shadow-md ${isNozzleFull ? 'text-slate-300 dark:text-slate-700' : 'fill-white'}`} />
-                {isNozzleFull ? "SEMUA NOZZLE PENUH" : "PANGGIL BERIKUTNYA"}
+                <Zap className={`w-7 h-7 drop-shadow-md ${isNozzleFull ? 'fill-white animate-pulse' : 'fill-white'}`} />
+                {isNozzleFull ? "KAPASITAS PENUH (OVERRIDE?)" : "PANGGIL BERIKUTNYA"}
               </button>
             )}
 
